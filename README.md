@@ -35,3 +35,8 @@ This repository now contains both:
 
 ## Feature Freeze Policy
 Legacy Apps Script is feature-frozen during migration. Any approved P0 drift must be logged in [`docs/migration-drift.md`](docs/migration-drift.md).
+
+## Delivery Governance
+- Source control conventions: [`docs/source-control-conventions.md`](docs/source-control-conventions.md)
+- PR checklist template: [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)
+- Rehearsal bug intake template: [`.github/ISSUE_TEMPLATE/rehearsal-bug.yml`](.github/ISSUE_TEMPLATE/rehearsal-bug.yml)
