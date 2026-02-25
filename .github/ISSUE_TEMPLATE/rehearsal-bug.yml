@@ -1,0 +1,80 @@
+name: Rehearsal bug report
+description: Report a defect found during cutover rehearsal or smoke testing
+title: "[Rehearsal Bug]: "
+labels: ["bug", "rehearsal"]
+body:
+  - type: input
+    id: rehearsal_date
+    attributes:
+      label: Rehearsal Date
+      description: Date of rehearsal run (YYYY-MM-DD).
+      placeholder: "2026-02-25"
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Preview
+        - Production
+      default: 0
+    validations:
+      required: true
+  - type: input
+    id: commit_sha
+    attributes:
+      label: Commit SHA
+      description: Commit being rehearsed.
+      placeholder: bc4f13d
+    validations:
+      required: true
+  - type: input
+    id: block_sheet
+    attributes:
+      label: Affected Block or Sheet
+      description: Example: Block 5, _DB_Blocks.
+      placeholder: Block 5
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - P0 (release blocker)
+        - P1 (major impact)
+        - P2 (minor impact)
+        - P3 (low impact)
+      default: 1
+    validations:
+      required: true
+  - type: dropdown
+    id: rollback_needed
+    attributes:
+      label: Rollback Needed
+      options:
+        - "No"
+        - "Yes"
+      default: 0
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction Steps
+      description: Include exact steps, data context, and affected route/sheet.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Include sanitized logs only. Do not include OAuth tokens.
