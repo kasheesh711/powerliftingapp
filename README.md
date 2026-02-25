@@ -39,6 +39,7 @@ This repository now contains both:
 - Google OAuth/Picker setup: [`docs/google-oauth-picker-setup.md`](docs/google-oauth-picker-setup.md)
 - Feedback template: [`docs/demo-feedback-template.md`](docs/demo-feedback-template.md)
 - PM operating model: [`docs/pm-operating-model.md`](docs/pm-operating-model.md)
+- Sprint board template: [`docs/sprint-board-template.md`](docs/sprint-board-template.md)
 
 ## Legacy Apps Script Deployment
 - `npm run gas:watch`
