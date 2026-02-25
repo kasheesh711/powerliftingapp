@@ -27,3 +27,25 @@ test('dashboard supports inline edit and save row', async ({ page }) => {
   await firstRow.getByRole('button', { name: 'Save Row' }).click();
   await expect(firstRow).toContainText('Clean');
 });
+
+test('dashboard supports save all and clears dirty state', async ({ page }) => {
+  await page.goto('/dashboard');
+  await expect(page.getByRole('heading', { name: 'Dashboard' })).toBeVisible();
+  await expect.poll(async () => page.locator('tbody tr').count(), { timeout: 45000 }).toBeGreaterThan(1);
+
+  const firstRow = page.getByTestId('editable-row-0');
+  const inputs = page.locator('tbody input');
+  await expect.poll(async () => inputs.count(), { timeout: 45000 }).toBeGreaterThan(1);
+
+  await inputs.nth(0).fill('122');
+  await inputs.nth(1).fill('9');
+
+  await expect(firstRow).toContainText('Dirty');
+  await expect(page.getByTestId('save-all-button')).toContainText('Save All (2)');
+
+  await page.getByTestId('save-all-button').click();
+
+  await expect(page.getByTestId('save-all-button')).toContainText('Save All (0)');
+  await expect(firstRow).toContainText('Clean');
+  await expect(page.getByTestId('save-notice')).toContainText('Saved 2 updates');
+});

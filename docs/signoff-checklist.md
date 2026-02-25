@@ -6,6 +6,15 @@ Date: 2026-02-24
 - [ ] Midday checkpoint completed (target 1:00 PM local)
 - [ ] End-of-day checkpoint completed (target 5:00 PM local)
 
+## MVP sprint dates
+- [ ] 2026-02-26 checkpoint completed
+- [ ] 2026-02-27 checkpoint completed
+- [ ] 2026-02-28 checkpoint completed
+- [ ] 2026-03-01 checkpoint completed
+- [ ] 2026-03-02 checkpoint completed
+- [ ] 2026-03-03 checkpoint completed
+- [ ] 2026-03-04 checkpoint completed
+
 ## Contract safety
 - [ ] No unapproved changes to `IDataStore` signatures
 - [ ] No unapproved changes to frozen HTTP routes
@@ -28,3 +37,10 @@ Date: 2026-02-24
 - [ ] Unit/Integration tests
 - [ ] Build
 - [ ] Parity command
+
+## Demo gate
+- [ ] Load/edit/save row flow demonstrated end-to-end
+- [ ] Save-all flow demonstrated end-to-end
+- [ ] Conflict modal behavior explained and validated
+- [ ] Deployed environment URL recorded
+- [ ] Demo release commit hash recorded

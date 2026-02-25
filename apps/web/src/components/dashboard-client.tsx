@@ -40,6 +40,11 @@ interface ConflictState {
   updates: CellUpdateInput[];
 }
 
+interface SaveNotice {
+  tone: 'success' | 'info';
+  message: string;
+}
+
 declare global {
   interface Window {
     google?: {
@@ -88,6 +93,13 @@ function getRowFieldValue(row: BlockRow, field: 'actualLoad' | 'rpe'): string {
   }
 
   return row.rpe || '';
+}
+
+function formatTimestamp(): string {
+  return new Date().toLocaleTimeString([], {
+    hour: 'numeric',
+    minute: '2-digit'
+  });
 }
 
 function loadGooglePickerScript(): Promise<void> {
@@ -144,6 +156,7 @@ export function DashboardClient(): JSX.Element {
 
   const [error, setError] = useState<string | null>(null);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [saveNotice, setSaveNotice] = useState<SaveNotice | null>(null);
   const [conflictState, setConflictState] = useState<ConflictState | null>(null);
 
   const isAuthenticated = Boolean(sessionEmail);
@@ -282,6 +295,7 @@ export function DashboardClient(): JSX.Element {
   }, [payload]);
 
   const updatePendingValue = useCallback((cellA1: string, field: 'actualLoad' | 'rpe', value: string) => {
+    setSaveNotice(null);
     setPendingValues((current) => ({
       ...current,
       [fieldKey(cellA1, field)]: value
@@ -355,6 +369,10 @@ export function DashboardClient(): JSX.Element {
 
       setIsSaving(true);
       setError(null);
+      setSaveNotice({
+        tone: 'info',
+        message: `Saving ${updates.length} update${updates.length === 1 ? '' : 's'}...`
+      });
 
       try {
         const response = await fetch(`/api/dashboard/block/${encodeURIComponent(selectedBlock)}/updates`, {
@@ -371,9 +389,14 @@ export function DashboardClient(): JSX.Element {
         const json = await parseJson<UpdateResult | ApiErrorResponse>(response);
 
         if (response.status === 409 && (json as UpdateResult).status === 'conflict') {
+          const conflictResult = json as Extract<UpdateResult, { status: 'conflict' }>;
           setConflictState({
-            result: json as Extract<UpdateResult, { status: 'conflict' }>,
+            result: conflictResult,
             updates
+          });
+          setSaveNotice({
+            tone: 'info',
+            message: `Conflicts detected in ${conflictResult.conflicts.length} cell(s). Choose reload or overwrite.`
           });
           return;
         }
@@ -388,6 +411,10 @@ export function DashboardClient(): JSX.Element {
 
         setConflictState(null);
         await loadBlock(selectedBlock, true);
+        setSaveNotice({
+          tone: 'success',
+          message: `Saved ${updates.length} update${updates.length === 1 ? '' : 's'} at ${formatTimestamp()}.`
+        });
       } finally {
         setIsSaving(false);
       }
@@ -436,6 +463,10 @@ export function DashboardClient(): JSX.Element {
       if (nextBlock) {
         await loadBlock(nextBlock, true);
       }
+      setSaveNotice({
+        tone: 'success',
+        message: `Spreadsheet updated at ${formatTimestamp()}.`
+      });
     },
     [loadBlock, loadInitial, loadSessionAndSelection, selectedBlock]
   );
@@ -522,6 +553,10 @@ export function DashboardClient(): JSX.Element {
     }
 
     await loadBlock(selectedBlock, true);
+    setSaveNotice({
+      tone: 'success',
+      message: `Block refreshed at ${formatTimestamp()}.`
+    });
   }, [loadBlock, selectedBlock]);
 
   const timeline = payload?.overallProgress.timeline || [];
@@ -713,6 +748,7 @@ export function DashboardClient(): JSX.Element {
               void saveAll().catch((e: unknown) => setError(asErrorMessage(e)));
             }}
             disabled={!payload || isSaving || dirtyUpdateCount === 0}
+            data-testid="save-all-button"
           >
             Save All ({dirtyUpdateCount})
           </button>
@@ -744,6 +780,21 @@ export function DashboardClient(): JSX.Element {
           }}
         >
           {connectionError}
+        </section>
+      ) : null}
+
+      {saveNotice ? (
+        <section
+          style={{
+            border: saveNotice.tone === 'success' ? '1px solid #86efac' : '1px solid #fcd34d',
+            background: saveNotice.tone === 'success' ? '#f0fdf4' : '#fffbeb',
+            color: saveNotice.tone === 'success' ? '#166534' : '#92400e',
+            borderRadius: 10,
+            padding: 12
+          }}
+          data-testid="save-notice"
+        >
+          {saveNotice.message}
         </section>
       ) : null}
 
@@ -880,18 +931,22 @@ export function DashboardClient(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {editableRows.map((row) => {
+            {editableRows.map((row, index) => {
               const rowUpdates = buildRowUpdates(row);
               const rowDirty = rowUpdates.length > 0;
 
               return (
-                <tr key={`${row.rowIndex}-${row.actualLoadCell || row.rpeCell || row.exercise}`}>
+                <tr
+                  key={`${row.rowIndex}-${row.actualLoadCell || row.rpeCell || row.exercise}`}
+                  data-testid={`editable-row-${index}`}
+                >
                   <td>{row.exercise}</td>
                   <td>{row.weekLabel || row.weekIndex || '-'}</td>
                   <td>{row.dayLabel || row.dayIndex || '-'}</td>
                   <td>
                     {row.actualLoadCell ? (
                       <input
+                        data-testid={`actual-load-input-${index}`}
                         value={pendingValues[fieldKey(row.actualLoadCell, 'actualLoad')] ?? getRowFieldValue(row, 'actualLoad')}
                         onChange={(event) =>
                           updatePendingValue(row.actualLoadCell as string, 'actualLoad', event.target.value)
@@ -905,6 +960,7 @@ export function DashboardClient(): JSX.Element {
                   <td>
                     {row.rpeCell ? (
                       <input
+                        data-testid={`rpe-input-${index}`}
                         value={pendingValues[fieldKey(row.rpeCell, 'rpe')] ?? getRowFieldValue(row, 'rpe')}
                         onChange={(event) => updatePendingValue(row.rpeCell as string, 'rpe', event.target.value)}
                         style={{ width: 96, padding: '6px 8px' }}
@@ -918,6 +974,7 @@ export function DashboardClient(): JSX.Element {
                     <button
                       type="button"
                       disabled={isSaving || !rowDirty}
+                      data-testid={`save-row-button-${index}`}
                       onClick={() => {
                         void saveRow(row).catch((e: unknown) => setError(asErrorMessage(e)));
                       }}
@@ -956,6 +1013,10 @@ export function DashboardClient(): JSX.Element {
             }}
           >
             <h3 style={{ margin: 0 }}>Conflicts detected</h3>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: 14 }}>
+              Another edit changed one or more cells after this page loaded. Reload to sync latest values or overwrite
+              to force your pending edits.
+            </p>
             <ConflictList conflicts={conflictState.result.conflicts} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <button

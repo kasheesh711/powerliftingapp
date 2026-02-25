@@ -1,0 +1,43 @@
+name: Demo rehearsal bug
+description: Capture defects discovered during MVP demo rehearsal sessions
+title: "[Demo Bug]: "
+labels: ["bug", "demo-rehearsal"]
+body:
+  - type: input
+    id: run_date
+    attributes:
+      label: Rehearsal Date
+      description: Date the issue was observed (YYYY-MM-DD).
+      placeholder: "2026-03-02"
+    validations:
+      required: true
+  - type: textarea
+    id: scenario
+    attributes:
+      label: Demo Scenario Step
+      description: Which script step failed (load, switch block, save row, save all, conflict, refresh)?
+    validations:
+      required: true
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Why this hurts demo reliability or audience trust.
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - P1 (must fix before external demo)
+        - P2 (should fix before external demo)
+        - P3 (can defer)
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Evidence
+      description: Include sanitized logs, screenshots, and affected block/sheet details.
+

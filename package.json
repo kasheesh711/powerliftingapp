@@ -18,6 +18,8 @@
     "parity": "turbo run parity",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
+    "deploy:web:preview": "./scripts/deploy_vercel.sh preview",
+    "deploy:web:production": "./scripts/deploy_vercel.sh production",
     "gas:watch": "clasp push -w -f",
     "gas:deploy": "clasp push -f",
     "watch": "npm run gas:watch",

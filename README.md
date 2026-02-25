@@ -28,6 +28,17 @@ This repository now contains both:
 - `npm run test`
 - `npm run build`
 - `npm run parity`
+- `npm run test:e2e`
+- `npm run deploy:web:preview`
+- `npm run deploy:web:production`
+
+## MVP Demo Execution Docs
+- Sprint tracker: [`docs/mvp-demo-sprint-checklist.md`](docs/mvp-demo-sprint-checklist.md)
+- Demo runbook: [`docs/demo-runbook.md`](docs/demo-runbook.md)
+- Vercel deploy guide: [`docs/vercel-deployment.md`](docs/vercel-deployment.md)
+- Google OAuth/Picker setup: [`docs/google-oauth-picker-setup.md`](docs/google-oauth-picker-setup.md)
+- Feedback template: [`docs/demo-feedback-template.md`](docs/demo-feedback-template.md)
+- PM operating model: [`docs/pm-operating-model.md`](docs/pm-operating-model.md)
 
 ## Legacy Apps Script Deployment
 - `npm run gas:watch`

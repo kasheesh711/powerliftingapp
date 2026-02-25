@@ -13,7 +13,15 @@
 - [ ] `npm run typecheck`
 - [ ] `npm run test`
 - [ ] `npm run build`
+- [ ] `npm run test:e2e`
 - [ ] `npm run parity` (if applicable)
+- [ ] Manual check for load/edit/save/conflict flow (if UI/data path touched)
+
+## MVP Demo Checklist
+- [ ] No change to frozen contract surface (`IDataStore`, routes, update allowlist)
+- [ ] Excel runtime path remains stable
+- [ ] User-facing error/success states are clear for this change
+- [ ] Deployment or runbook docs updated (if operational behavior changed)
 
 ## Security Checklist
 - [ ] No refresh/access tokens logged

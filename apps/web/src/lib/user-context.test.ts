@@ -67,4 +67,15 @@ describe('getUserContext', () => {
       spreadsheetId: 'sheet-from-selection'
     });
   });
+
+  it('falls back to local-workbook when no selected sheet or source sheet is configured', async () => {
+    process.env.SOURCE_SPREADSHEET_ID = '';
+    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(getSelectedSpreadsheet).mockResolvedValue(null);
+
+    const context = await getUserContext();
+
+    expect(context.userId).toBe('local-dev@example.com');
+    expect(context.spreadsheetId).toBe('local-workbook');
+  });
 });
