@@ -40,3 +40,8 @@ Legacy Apps Script is feature-frozen during migration. Any approved P0 drift mus
 - Source control conventions: [`docs/source-control-conventions.md`](docs/source-control-conventions.md)
 - PR checklist template: [`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)
 - Rehearsal bug intake template: [`.github/ISSUE_TEMPLATE/rehearsal-bug.yml`](.github/ISSUE_TEMPLATE/rehearsal-bug.yml)
+
+## Demo Workflow
+- Google OAuth + Picker setup: [`docs/google-oauth-picker-setup.md`](docs/google-oauth-picker-setup.md)
+- Demo rehearsal runbook: [`docs/demo-runbook.md`](docs/demo-runbook.md)
+- Demo feedback template: [`docs/demo-feedback-template.md`](docs/demo-feedback-template.md)
