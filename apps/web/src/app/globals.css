@@ -1,24 +1,24 @@
 :root {
   color-scheme: dark;
-  --bg-0: #04070d;
-  --bg-1: #0a0f18;
-  --bg-2: #101725;
-  --surface-1: #121a27;
-  --surface-2: #182233;
-  --surface-3: #202c40;
-  --border-default: #2e3a4f;
-  --border-strong: #42536f;
-  --text-strong: #f2f6ff;
-  --text: #d6dff1;
-  --text-muted: #92a0ba;
-  --accent-primary: #6f96cf;
-  --lift-squat: #cb6f6f;
-  --lift-bench: #81a3d8;
-  --lift-deadlift: #63b998;
-  --warning: #d9a35e;
-  --danger: #d17373;
-  --shadow-soft: 0 16px 34px rgb(0 0 0 / 0.26);
-  --shadow-panel: 0 20px 44px rgb(0 0 0 / 0.34);
+  --bg-0: #020202;
+  --bg-1: #07080a;
+  --bg-2: #0d0f12;
+  --surface-1: #111317;
+  --surface-2: #16191e;
+  --surface-3: #1f242c;
+  --border-default: #2c3139;
+  --border-strong: #3a414d;
+  --text-strong: #f4f6f8;
+  --text: #d3d8df;
+  --text-muted: #8f98a4;
+  --accent-primary: #889db8;
+  --lift-squat: #7f8da1;
+  --lift-bench: #7989a0;
+  --lift-deadlift: #6f8198;
+  --warning: #b99a67;
+  --danger: #b77777;
+  --shadow-soft: 0 16px 34px rgb(0 0 0 / 0.34);
+  --shadow-panel: 0 22px 46px rgb(0 0 0 / 0.44);
 }
 
 * {
@@ -35,9 +35,9 @@ body {
   font-family: var(--font-body), 'Avenir Next', 'Segoe UI', sans-serif;
   color: var(--text);
   background:
-    radial-gradient(1200px 700px at 2% -8%, rgb(119 148 194 / 0.16), transparent 50%),
-    radial-gradient(900px 600px at 100% 0%, rgb(103 127 169 / 0.12), transparent 52%),
-    linear-gradient(165deg, var(--bg-0) 0%, var(--bg-1) 36%, var(--bg-2) 100%);
+    radial-gradient(1000px 640px at 5% -8%, rgb(130 149 172 / 0.08), transparent 52%),
+    radial-gradient(900px 640px at 100% 0%, rgb(108 121 139 / 0.06), transparent 56%),
+    linear-gradient(166deg, var(--bg-0) 0%, var(--bg-1) 40%, var(--bg-2) 100%);
 }
 
 h1,
@@ -51,13 +51,13 @@ h6 {
 }
 
 a {
-  color: color-mix(in srgb, var(--text-strong) 84%, var(--accent-primary) 16%);
+  color: color-mix(in srgb, var(--text-strong) 90%, var(--accent-primary) 10%);
   text-decoration: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 48%, transparent 52%);
+  border-bottom: 1px solid color-mix(in srgb, var(--accent-primary) 38%, transparent 62%);
 }
 
 a:hover {
-  border-bottom-color: color-mix(in srgb, var(--accent-primary) 74%, transparent 26%);
+  border-bottom-color: color-mix(in srgb, var(--accent-primary) 58%, transparent 42%);
 }
 
 button,

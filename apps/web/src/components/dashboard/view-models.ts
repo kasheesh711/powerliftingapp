@@ -1,4 +1,9 @@
-import type { BlockRow, OverallTimelinePoint, PrimaryByWeek, Stats } from '@powerlifting/domain';
+import type { BlockRow, OverallPrimaryProgress, OverallTimelinePoint, PrimaryByWeek } from '@powerlifting/domain';
+
+const LIFTS = ['squat', 'bench', 'deadlift'] as const;
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
+
+type PrimaryLift = (typeof LIFTS)[number];
 
 export interface OverallTimelineDatum {
   index: number;
@@ -36,21 +41,95 @@ export interface BlockPrimaryWeekSeries {
   hasAnyValue: boolean;
 }
 
-export interface GrowthDeltaDatum {
-  id: 'squat' | 'bench' | 'deadlift' | 'total';
+export interface DayRowSection {
+  key: string;
+  dayKey: string;
+  dayIndex: number | null;
   label: string;
-  delta: number;
-  deltaPct: number;
-  projected: number;
-  baseline: number;
+  dayName: string;
+  rows: BlockRow[];
+  completionPct: number;
 }
 
-export interface WeekRowGroup {
+export interface WeekDaySection {
   key: string;
-  baseKey: string;
-  label: string;
+  weekKey: string;
   weekIndex: number | null;
+  label: string;
   rows: BlockRow[];
+  days: DayRowSection[];
+}
+
+export interface CurrentPositionVM {
+  weekIndex: number | null;
+  dayIndex: number | null;
+  source: 'manual' | 'inferred';
+  completionPct: number | null;
+}
+
+export interface BlockComparisonVM {
+  blockName: string;
+  blockLabel: string;
+  weekCount: number;
+  startTotal: number | null;
+  endTotal: number | null;
+  totalDelta: number;
+  squatDelta: number;
+  benchDelta: number;
+  deadliftDelta: number;
+}
+
+export interface GrowthRateVM {
+  lift: PrimaryLift;
+  label: string;
+  current: number;
+  overallRate: number;
+  recentRate: number;
+  blendedRate: number;
+}
+
+export type GrowthRatesByLift = Record<PrimaryLift, GrowthRateVM>;
+
+export interface MeetProjectionVM {
+  meetDate: string;
+  weeksRemaining: number;
+  currentPosition: CurrentPositionVM;
+  current: {
+    squat: number;
+    bench: number;
+    deadlift: number;
+    total: number;
+  };
+  projected: {
+    squat: number;
+    bench: number;
+    deadlift: number;
+    total: number;
+  };
+}
+
+export interface DashboardAnalyticsVM {
+  weekSections: WeekDaySection[];
+  inferredPosition: CurrentPositionVM;
+  blockComparisons: BlockComparisonVM[];
+  growthRates: GrowthRatesByLift;
+}
+
+function roundOneDecimal(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function numericOrNull(value: unknown): number | null {
+  if (value === null || value === undefined || value === '') {
+    return null;
+  }
+
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(String(value));
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
 }
 
 function positiveIntOrNull(value: unknown): number | null {
@@ -62,13 +141,56 @@ function positiveIntOrNull(value: unknown): number | null {
   return parsed;
 }
 
-function describeWeek(row: BlockRow): { baseKey: string; label: string; weekIndex: number | null } {
+function isValidLoad(value: unknown): boolean {
+  const parsed = numericOrNull(value);
+  return parsed !== null && parsed > 0;
+}
+
+function sumOrNull(values: Array<number | null>): number | null {
+  if (values.some((value) => value === null)) {
+    return null;
+  }
+
+  return values.reduce<number>((sum, value) => sum + (value ?? 0), 0);
+}
+
+function blockLabel(blockName: string, blockNum: string): string {
+  if (blockNum) {
+    return `B${blockNum}`;
+  }
+
+  return String(blockName || 'Block');
+}
+
+function canonicalLiftKey(exercise: unknown): PrimaryLift | null {
+  const normalized = String(exercise || '').toLowerCase();
+
+  if (!normalized) {
+    return null;
+  }
+
+  if (normalized.includes('bench')) {
+    return 'bench';
+  }
+
+  if (normalized.includes('squat')) {
+    return 'squat';
+  }
+
+  if (normalized.includes('deadlift') || /\bdl\b/.test(normalized)) {
+    return 'deadlift';
+  }
+
+  return null;
+}
+
+function weekDescriptor(row: BlockRow): { key: string; label: string; weekIndex: number | null } {
   const weekIndex = positiveIntOrNull(row.weekIndex);
   const weekLabel = String(row.weekLabel || '').trim();
 
   if (weekIndex !== null) {
     return {
-      baseKey: `week-${weekIndex}`,
+      key: `week-${weekIndex}`,
       label: weekLabel || `Week ${weekIndex}`,
       weekIndex
     };
@@ -76,17 +198,211 @@ function describeWeek(row: BlockRow): { baseKey: string; label: string; weekInde
 
   if (weekLabel) {
     return {
-      baseKey: `label-${weekLabel.toLowerCase()}`,
+      key: `week-label-${weekLabel.toLowerCase()}`,
       label: weekLabel,
       weekIndex: null
     };
   }
 
   return {
-    baseKey: 'unassigned',
+    key: 'week-unassigned',
     label: 'Unassigned Week',
     weekIndex: null
   };
+}
+
+function dayDescriptor(row: BlockRow): { key: string; label: string; dayIndex: number | null; dayName: string } {
+  const dayIndex = positiveIntOrNull(row.dayIndex);
+  const dayLabel = String(row.dayLabel || '').trim();
+  const dayName = String(row.dayName || '').trim();
+
+  if (dayIndex !== null) {
+    return {
+      key: `day-${dayIndex}`,
+      label: dayLabel || `Day ${dayIndex}`,
+      dayIndex,
+      dayName
+    };
+  }
+
+  if (dayLabel) {
+    return {
+      key: `day-label-${dayLabel.toLowerCase()}`,
+      label: dayLabel,
+      dayIndex: null,
+      dayName
+    };
+  }
+
+  return {
+    key: 'day-unassigned',
+    label: 'Unassigned Day',
+    dayIndex: null,
+    dayName
+  };
+}
+
+function compareRowsForWeekDaySort(a: BlockRow, b: BlockRow): number {
+  const weekA = positiveIntOrNull(a.weekIndex) ?? Number.MAX_SAFE_INTEGER;
+  const weekB = positiveIntOrNull(b.weekIndex) ?? Number.MAX_SAFE_INTEGER;
+  if (weekA !== weekB) {
+    return weekA - weekB;
+  }
+
+  const dayA = positiveIntOrNull(a.dayIndex) ?? Number.MAX_SAFE_INTEGER;
+  const dayB = positiveIntOrNull(b.dayIndex) ?? Number.MAX_SAFE_INTEGER;
+  if (dayA !== dayB) {
+    return dayA - dayB;
+  }
+
+  const dayRowA = positiveIntOrNull(a.dayRowIndex) ?? Number.MAX_SAFE_INTEGER;
+  const dayRowB = positiveIntOrNull(b.dayRowIndex) ?? Number.MAX_SAFE_INTEGER;
+  if (dayRowA !== dayRowB) {
+    return dayRowA - dayRowB;
+  }
+
+  const rowA = positiveIntOrNull(a.rowIndex) ?? Number.MAX_SAFE_INTEGER;
+  const rowB = positiveIntOrNull(b.rowIndex) ?? Number.MAX_SAFE_INTEGER;
+  if (rowA !== rowB) {
+    return rowA - rowB;
+  }
+
+  return String(a.exercise || '').localeCompare(String(b.exercise || ''), undefined, {
+    sensitivity: 'base'
+  });
+}
+
+function olsSlope(values: Array<{ x: number; y: number }>): number | null {
+  if (values.length < 2) {
+    return null;
+  }
+
+  const count = values.length;
+  const sumX = values.reduce((sum, point) => sum + point.x, 0);
+  const sumY = values.reduce((sum, point) => sum + point.y, 0);
+  const meanX = sumX / count;
+  const meanY = sumY / count;
+
+  let numerator = 0;
+  let denominator = 0;
+
+  for (const point of values) {
+    const xDiff = point.x - meanX;
+    numerator += xDiff * (point.y - meanY);
+    denominator += xDiff * xDiff;
+  }
+
+  if (!denominator) {
+    return null;
+  }
+
+  return numerator / denominator;
+}
+
+function getCurrentLiftFromTimeline(timeline: OverallTimelinePoint[], lift: PrimaryLift): number {
+  for (let index = timeline.length - 1; index >= 0; index -= 1) {
+    const load = numericOrNull(timeline[index]?.[lift]?.loadKg);
+    if (load !== null && load > 0) {
+      return load;
+    }
+  }
+
+  return 0;
+}
+
+function getLiftRateForBlock(
+  block: OverallPrimaryProgress['blocks'][number],
+  lift: PrimaryLift
+): number | null {
+  let startLoad: number | null = null;
+  let endLoad: number | null = null;
+  let startWeek: number | null = null;
+  let endWeek: number | null = null;
+
+  for (const week of block.weeks) {
+    const weekIndex = positiveIntOrNull(week.weekIndex);
+    const load = numericOrNull(week[lift]?.loadKg);
+
+    if (weekIndex === null || load === null || load <= 0) {
+      continue;
+    }
+
+    if (startLoad === null) {
+      startLoad = load;
+      startWeek = weekIndex;
+    }
+
+    endLoad = load;
+    endWeek = weekIndex;
+  }
+
+  if (startLoad === null || endLoad === null || startWeek === null || endWeek === null) {
+    return null;
+  }
+
+  const weekSpan = Math.max(1, endWeek - startWeek);
+  return (endLoad - startLoad) / weekSpan;
+}
+
+function startOfLocalDay(input: Date): Date {
+  return new Date(input.getFullYear(), input.getMonth(), input.getDate());
+}
+
+function parseDateInput(value: string): Date | null {
+  if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return null;
+  }
+
+  const [yearRaw, monthRaw, dayRaw] = value.split('-');
+  const year = Number.parseInt(yearRaw, 10);
+  const month = Number.parseInt(monthRaw, 10);
+  const day = Number.parseInt(dayRaw, 10);
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  const date = new Date(year, month - 1, day);
+  return Number.isFinite(date.getTime()) ? date : null;
+}
+
+function clampNonNegative(value: number): number {
+  return Math.max(0, value);
+}
+
+function getCurrentLiftFromRows(rows: BlockRow[], currentPosition: CurrentPositionVM, lift: PrimaryLift): number | null {
+  const weekIndex = currentPosition.weekIndex;
+  const dayIndex = currentPosition.dayIndex;
+
+  if (weekIndex === null) {
+    return null;
+  }
+
+  let best: number | null = null;
+
+  for (const row of rows) {
+    const rowLift = canonicalLiftKey(row.exercise);
+    if (rowLift !== lift) {
+      continue;
+    }
+
+    if (positiveIntOrNull(row.weekIndex) !== weekIndex) {
+      continue;
+    }
+
+    if (dayIndex !== null && positiveIntOrNull(row.dayIndex) !== dayIndex) {
+      continue;
+    }
+
+    const load = numericOrNull(row.actualLoadKg);
+    if (load === null || load <= 0) {
+      continue;
+    }
+
+    best = best === null ? load : Math.max(best, load);
+  }
+
+  return best;
 }
 
 export function buildOverallTimelineSeries(timeline: OverallTimelinePoint[]): OverallTimelineSeries {
@@ -157,48 +473,248 @@ export function buildBlockPrimaryWeekSeries(primaryByWeek: PrimaryByWeek | null 
   };
 }
 
-export function buildGrowthDeltaData(growth: Stats['growth'] | null | undefined): GrowthDeltaDatum[] {
-  if (!growth) {
-    return [];
-  }
+export function buildWeekDaySections(rows: BlockRow[]): WeekDaySection[] {
+  const sorted = [...(rows || [])].sort(compareRowsForWeekDaySort);
+  const weekSections: WeekDaySection[] = [];
 
-  const rows: Array<{ id: GrowthDeltaDatum['id']; label: GrowthDeltaDatum['label']; source: Stats['growth'][keyof Stats['growth']] }> = [
-    { id: 'squat', label: 'Squat', source: growth.squat },
-    { id: 'bench', label: 'Bench', source: growth.bench },
-    { id: 'deadlift', label: 'Deadlift', source: growth.deadlift },
-    { id: 'total', label: 'Total', source: growth.total }
-  ];
+  for (const row of sorted) {
+    const week = weekDescriptor(row);
+    const day = dayDescriptor(row);
+    const latestWeek = weekSections[weekSections.length - 1];
 
-  return rows.map((row) => ({
-    id: row.id,
-    label: row.label,
-    delta: row.source.delta,
-    deltaPct: row.source.deltaPct,
-    projected: row.source.projected,
-    baseline: row.source.baseline
-  }));
-}
-
-export function groupRowsByWeek(rows: BlockRow[]): WeekRowGroup[] {
-  const groups: WeekRowGroup[] = [];
-
-  for (const row of rows || []) {
-    const descriptor = describeWeek(row);
-    const previous = groups[groups.length - 1];
-
-    if (!previous || previous.baseKey !== descriptor.baseKey) {
-      groups.push({
-        key: `${descriptor.baseKey}-${groups.length}`,
-        baseKey: descriptor.baseKey,
-        label: descriptor.label,
-        weekIndex: descriptor.weekIndex,
-        rows: [row]
+    if (!latestWeek || latestWeek.weekKey !== week.key) {
+      weekSections.push({
+        key: `${week.key}-${weekSections.length}`,
+        weekKey: week.key,
+        weekIndex: week.weekIndex,
+        label: week.label,
+        rows: [row],
+        days: [
+          {
+            key: `${week.key}-${day.key}-0`,
+            dayKey: day.key,
+            dayIndex: day.dayIndex,
+            label: day.label,
+            dayName: day.dayName,
+            rows: [row],
+            completionPct: isValidLoad(row.actualLoadKg) ? 1 : 0
+          }
+        ]
       });
       continue;
     }
 
-    previous.rows.push(row);
+    latestWeek.rows.push(row);
+
+    const latestDay = latestWeek.days[latestWeek.days.length - 1];
+    if (!latestDay || latestDay.dayKey !== day.key) {
+      latestWeek.days.push({
+        key: `${week.key}-${day.key}-${latestWeek.days.length}`,
+        dayKey: day.key,
+        dayIndex: day.dayIndex,
+        label: day.label,
+        dayName: day.dayName,
+        rows: [row],
+        completionPct: isValidLoad(row.actualLoadKg) ? 1 : 0
+      });
+      continue;
+    }
+
+    latestDay.rows.push(row);
   }
 
-  return groups;
+  for (const week of weekSections) {
+    for (const day of week.days) {
+      const total = day.rows.length;
+      if (!total) {
+        day.completionPct = 0;
+        continue;
+      }
+
+      const completed = day.rows.reduce((count, row) => count + (isValidLoad(row.actualLoadKg) ? 1 : 0), 0);
+      day.completionPct = completed / total;
+    }
+  }
+
+  return weekSections;
+}
+
+export function inferCurrentPosition(rows: BlockRow[], threshold = 0.8): CurrentPositionVM {
+  const weekSections = buildWeekDaySections(rows);
+  let fallbackWeek: number | null = null;
+  let fallbackDay: number | null = null;
+
+  for (const week of weekSections) {
+    for (const day of week.days) {
+      if (fallbackWeek === null && week.weekIndex !== null) {
+        fallbackWeek = week.weekIndex;
+      }
+
+      if (fallbackDay === null && day.dayIndex !== null) {
+        fallbackDay = day.dayIndex;
+      }
+    }
+  }
+
+  let best: CurrentPositionVM | null = null;
+
+  for (const week of weekSections) {
+    for (const day of week.days) {
+      if (week.weekIndex === null || day.dayIndex === null) {
+        continue;
+      }
+
+      if (day.completionPct < threshold) {
+        continue;
+      }
+
+      best = {
+        weekIndex: week.weekIndex,
+        dayIndex: day.dayIndex,
+        source: 'inferred',
+        completionPct: roundOneDecimal(day.completionPct * 100)
+      };
+    }
+  }
+
+  if (best) {
+    return best;
+  }
+
+  return {
+    weekIndex: fallbackWeek,
+    dayIndex: fallbackDay,
+    source: 'inferred',
+    completionPct: null
+  };
+}
+
+export function buildBlockComparisons(blocks: OverallPrimaryProgress['blocks']): BlockComparisonVM[] {
+  return (blocks || []).map((block) => {
+    const startTotal = sumOrNull([block.summary.squat.start, block.summary.bench.start, block.summary.deadlift.start]);
+    const endTotal = sumOrNull([block.summary.squat.end, block.summary.bench.end, block.summary.deadlift.end]);
+
+    return {
+      blockName: block.blockName,
+      blockLabel: blockLabel(block.blockName, block.blockNum),
+      weekCount: block.weeks.length,
+      startTotal,
+      endTotal,
+      totalDelta: roundOneDecimal(block.summary.squat.delta + block.summary.bench.delta + block.summary.deadlift.delta),
+      squatDelta: roundOneDecimal(block.summary.squat.delta),
+      benchDelta: roundOneDecimal(block.summary.bench.delta),
+      deadliftDelta: roundOneDecimal(block.summary.deadlift.delta)
+    };
+  });
+}
+
+export function buildGrowthRates(
+  timeline: OverallTimelinePoint[],
+  blocks: OverallPrimaryProgress['blocks']
+): GrowthRatesByLift {
+  const output = {} as GrowthRatesByLift;
+
+  for (const lift of LIFTS) {
+    const values: Array<{ x: number; y: number }> = [];
+
+    for (let index = 0; index < (timeline || []).length; index += 1) {
+      const load = numericOrNull(timeline[index]?.[lift]?.loadKg);
+      if (load === null || load <= 0) {
+        continue;
+      }
+
+      values.push({ x: index, y: load });
+    }
+
+    const overallRateRaw = olsSlope(values);
+    const blockRates = (blocks || [])
+      .map((block) => getLiftRateForBlock(block, lift))
+      .filter((value): value is number => value !== null);
+
+    const recentSlice = blockRates.slice(-2);
+    const recentRateRaw = recentSlice.length
+      ? recentSlice.reduce((sum, value) => sum + value, 0) / recentSlice.length
+      : null;
+
+    const blendedRateRaw =
+      recentRateRaw !== null && overallRateRaw !== null
+        ? recentRateRaw * 0.6 + overallRateRaw * 0.4
+        : recentRateRaw ?? overallRateRaw ?? 0;
+
+    output[lift] = {
+      lift,
+      label: lift[0].toUpperCase() + lift.slice(1),
+      current: roundOneDecimal(getCurrentLiftFromTimeline(timeline || [], lift)),
+      overallRate: roundOneDecimal(overallRateRaw ?? 0),
+      recentRate: roundOneDecimal(recentRateRaw ?? 0),
+      blendedRate: roundOneDecimal(blendedRateRaw)
+    };
+  }
+
+  return output;
+}
+
+export function buildMeetProjection(input: {
+  rows: BlockRow[];
+  timeline: OverallTimelinePoint[];
+  meetDate: string;
+  currentPosition: CurrentPositionVM;
+  growthRates: GrowthRatesByLift;
+}): MeetProjectionVM {
+  const { rows, timeline, meetDate, currentPosition, growthRates } = input;
+  const meetDateObj = parseDateInput(meetDate);
+  const todayStart = startOfLocalDay(new Date());
+  const meetStart = meetDateObj ? startOfLocalDay(meetDateObj) : todayStart;
+
+  const weeksRemaining = clampNonNegative(Math.ceil((meetStart.getTime() - todayStart.getTime()) / MS_PER_WEEK));
+
+  const currentSquat =
+    getCurrentLiftFromRows(rows, currentPosition, 'squat') ?? growthRates.squat.current ?? getCurrentLiftFromTimeline(timeline, 'squat');
+  const currentBench =
+    getCurrentLiftFromRows(rows, currentPosition, 'bench') ?? growthRates.bench.current ?? getCurrentLiftFromTimeline(timeline, 'bench');
+  const currentDeadlift =
+    getCurrentLiftFromRows(rows, currentPosition, 'deadlift') ??
+    growthRates.deadlift.current ??
+    getCurrentLiftFromTimeline(timeline, 'deadlift');
+
+  const projectedSquat = clampNonNegative(currentSquat + growthRates.squat.blendedRate * weeksRemaining);
+  const projectedBench = clampNonNegative(currentBench + growthRates.bench.blendedRate * weeksRemaining);
+  const projectedDeadlift = clampNonNegative(currentDeadlift + growthRates.deadlift.blendedRate * weeksRemaining);
+
+  const currentTotal = currentSquat + currentBench + currentDeadlift;
+  const projectedTotal = projectedSquat + projectedBench + projectedDeadlift;
+
+  return {
+    meetDate,
+    weeksRemaining,
+    currentPosition,
+    current: {
+      squat: roundOneDecimal(currentSquat),
+      bench: roundOneDecimal(currentBench),
+      deadlift: roundOneDecimal(currentDeadlift),
+      total: roundOneDecimal(currentTotal)
+    },
+    projected: {
+      squat: roundOneDecimal(projectedSquat),
+      bench: roundOneDecimal(projectedBench),
+      deadlift: roundOneDecimal(projectedDeadlift),
+      total: roundOneDecimal(projectedTotal)
+    }
+  };
+}
+
+export function buildDashboardAnalytics(
+  rows: BlockRow[],
+  overallProgress: OverallPrimaryProgress | null | undefined
+): DashboardAnalyticsVM {
+  const safeRows = rows || [];
+  const timeline = overallProgress?.timeline || [];
+  const blocks = overallProgress?.blocks || [];
+
+  return {
+    weekSections: buildWeekDaySections(safeRows),
+    inferredPosition: inferCurrentPosition(safeRows),
+    blockComparisons: buildBlockComparisons(blocks),
+    growthRates: buildGrowthRates(timeline, blocks)
+  };
 }

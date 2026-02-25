@@ -1,13 +1,21 @@
 import type { BlockRow } from '@powerlifting/domain';
-import { Fragment, useMemo } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 
 import { BlockPrimaryProgressChart } from './charts/block-primary-progress-chart';
-import { GrowthDeltaChart } from './charts/growth-delta-chart';
+import { BlockComparisonChart } from './charts/block-comparison-chart';
+import { MeetProjectionChart } from './charts/meet-projection-chart';
 import { OverallPrimaryProgressChart } from './charts/overall-primary-progress-chart';
 import type { DashboardViewProps } from './types';
-import { groupRowsByWeek } from './view-models';
+import { buildDashboardAnalytics, buildMeetProjection, type CurrentPositionVM } from './view-models';
 
 import styles from './dashboard-view.module.css';
+
+const DEFAULT_MEET_DATE = '2026-11-07';
+const STORAGE_KEYS = {
+  meetDate: 'dashboard.meetDate',
+  currentWeek: 'dashboard.currentWeek',
+  currentDay: 'dashboard.currentDay'
+} as const;
 
 function formatKg(value: number): string {
   return `${value.toFixed(1)} kg`;
@@ -17,28 +25,21 @@ function formatScore(value: number): string {
   return value.toFixed(2);
 }
 
-function weekDisplay(row: BlockRow): string {
-  if (row.weekLabel) {
-    return row.weekLabel;
-  }
-
-  if (row.weekIndex) {
-    return `Week ${row.weekIndex}`;
-  }
-
-  return '-';
+function formatRate(value: number): string {
+  return `${value >= 0 ? '+' : ''}${value.toFixed(1)} kg/week`;
 }
 
-function dayDisplay(row: BlockRow): string {
-  if (row.dayLabel) {
-    return row.dayLabel;
+function readStoredInt(value: string | null): string {
+  if (!value) {
+    return '';
   }
 
-  if (row.dayIndex) {
-    return `Day ${row.dayIndex}`;
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return '';
   }
 
-  return '-';
+  return String(parsed);
 }
 
 export function DashboardView(props: DashboardViewProps): JSX.Element {
@@ -74,74 +75,128 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     getRowKey
   } = props;
 
+  const [meetDate, setMeetDate] = useState(DEFAULT_MEET_DATE);
+  const [manualWeek, setManualWeek] = useState('');
+  const [manualDay, setManualDay] = useState('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    const storedMeetDate = window.localStorage.getItem(STORAGE_KEYS.meetDate);
+    const storedWeek = window.localStorage.getItem(STORAGE_KEYS.currentWeek);
+    const storedDay = window.localStorage.getItem(STORAGE_KEYS.currentDay);
+
+    if (storedMeetDate && /^\d{4}-\d{2}-\d{2}$/.test(storedMeetDate)) {
+      setMeetDate(storedMeetDate);
+    }
+
+    setManualWeek(readStoredInt(storedWeek));
+    setManualDay(readStoredInt(storedDay));
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return;
+    }
+
+    window.localStorage.setItem(STORAGE_KEYS.meetDate, meetDate);
+
+    if (manualWeek) {
+      window.localStorage.setItem(STORAGE_KEYS.currentWeek, manualWeek);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentWeek);
+    }
+
+    if (manualDay) {
+      window.localStorage.setItem(STORAGE_KEYS.currentDay, manualDay);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.currentDay);
+    }
+  }, [meetDate, manualWeek, manualDay]);
+
   const blockOptions = useMemo(
     () => (initial?.blocks || []).filter((entry) => entry.isBlock).map((entry) => entry.name),
     [initial]
   );
 
-  const rowGroups = useMemo(() => groupRowsByWeek(payload?.blockData.rows || []), [payload]);
+  const rows = payload?.blockData.rows || [];
+  const timeline = payload?.overallProgress.timeline || [];
 
-  const metrics = payload
-    ? [
-        {
-          label: 'Current Total',
-          value: formatKg(payload.stats.current.total),
-          detail: `DOTS ${formatScore(payload.stats.current.dots)} | Wilks ${formatScore(payload.stats.current.wilks)} | GL ${formatScore(payload.stats.current.gl)}`,
-          hero: true
-        },
-        {
-          label: 'Projected Total',
-          value: formatKg(payload.stats.projected.total),
-          detail: `${payload.stats.growth.total.delta >= 0 ? '+' : ''}${formatKg(payload.stats.growth.total.delta)} (${payload.stats.growth.total.deltaPct.toFixed(1)}%)`,
-          hero: true
-        },
-        {
-          label: 'Current DOTS',
-          value: formatScore(payload.stats.current.dots),
-          detail: 'Current coefficient score'
-        },
-        {
-          label: 'Projected DOTS',
-          value: formatScore(payload.stats.projected.dots),
-          detail: 'Projected coefficient score'
-        },
-        {
-          label: 'Current Wilks',
-          value: formatScore(payload.stats.current.wilks),
-          detail: 'Current Wilks points'
-        },
-        {
-          label: 'Projected Wilks',
-          value: formatScore(payload.stats.projected.wilks),
-          detail: 'Projected Wilks points'
-        },
-        {
-          label: 'Current GL',
-          value: formatScore(payload.stats.current.gl),
-          detail: 'Current Goodlift points'
-        },
-        {
-          label: 'Projected GL',
-          value: formatScore(payload.stats.projected.gl),
-          detail: 'Projected Goodlift points'
-        },
-        {
-          label: 'Squat Delta',
-          value: formatKg(payload.stats.growth.squat.delta),
-          detail: `${payload.stats.growth.squat.deltaPct.toFixed(1)}%`
-        },
-        {
-          label: 'Bench Delta',
-          value: formatKg(payload.stats.growth.bench.delta),
-          detail: `${payload.stats.growth.bench.deltaPct.toFixed(1)}%`
-        },
-        {
-          label: 'Deadlift Delta',
-          value: formatKg(payload.stats.growth.deadlift.delta),
-          detail: `${payload.stats.growth.deadlift.deltaPct.toFixed(1)}%`
-        }
-      ]
-    : [];
+  const analytics = useMemo(() => buildDashboardAnalytics(rows, payload?.overallProgress), [rows, payload?.overallProgress]);
+
+  const weekOptions = useMemo(
+    () =>
+      analytics.weekSections
+        .map((section) => section.weekIndex)
+        .filter((value): value is number => value !== null),
+    [analytics.weekSections]
+  );
+
+  const selectedWeekForDay = useMemo(() => {
+    const parsed = Number.parseInt(manualWeek, 10);
+    if (Number.isFinite(parsed) && parsed > 0) {
+      return parsed;
+    }
+
+    return analytics.inferredPosition.weekIndex;
+  }, [analytics.inferredPosition.weekIndex, manualWeek]);
+
+  const dayOptions = useMemo(() => {
+    if (selectedWeekForDay !== null) {
+      const section = analytics.weekSections.find((entry) => entry.weekIndex === selectedWeekForDay);
+      if (section) {
+        return section.days
+          .map((day) => day.dayIndex)
+          .filter((value): value is number => value !== null);
+      }
+    }
+
+    const all = analytics.weekSections.flatMap((section) => section.days.map((day) => day.dayIndex));
+    return [...new Set(all)].filter((value): value is number => value !== null);
+  }, [analytics.weekSections, selectedWeekForDay]);
+
+  const currentPosition = useMemo<CurrentPositionVM>(() => {
+    const parsedWeek = Number.parseInt(manualWeek, 10);
+    const hasManualWeek = Number.isFinite(parsedWeek) && parsedWeek > 0;
+
+    const parsedDay = Number.parseInt(manualDay, 10);
+    const hasManualDay = Number.isFinite(parsedDay) && parsedDay > 0;
+
+    const weekIndex = hasManualWeek ? parsedWeek : analytics.inferredPosition.weekIndex;
+    let dayIndex = hasManualDay ? parsedDay : analytics.inferredPosition.dayIndex;
+
+    if (hasManualWeek && !hasManualDay) {
+      const section = analytics.weekSections.find((entry) => entry.weekIndex === parsedWeek);
+      const firstDay = section?.days.find((day) => day.dayIndex !== null)?.dayIndex || null;
+      dayIndex = firstDay || dayIndex;
+    }
+
+    return {
+      weekIndex: weekIndex ?? null,
+      dayIndex: dayIndex ?? null,
+      source: hasManualWeek || hasManualDay ? 'manual' : 'inferred',
+      completionPct: hasManualWeek || hasManualDay ? null : analytics.inferredPosition.completionPct
+    };
+  }, [analytics.inferredPosition, analytics.weekSections, manualDay, manualWeek]);
+
+  const meetProjection = useMemo(
+    () =>
+      buildMeetProjection({
+        rows,
+        timeline,
+        meetDate,
+        currentPosition,
+        growthRates: analytics.growthRates
+      }),
+    [analytics.growthRates, currentPosition, meetDate, rows, timeline]
+  );
+
+  const currentPositionLabel =
+    currentPosition.weekIndex !== null && currentPosition.dayIndex !== null
+      ? `Week ${currentPosition.weekIndex}, Day ${currentPosition.dayIndex}`
+      : 'No inferred position';
 
   return (
     <main className={styles.page}>
@@ -274,17 +329,139 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
         {connectionError ? <section className={`${styles.banner} ${styles.bannerWarn}`}>{connectionError}</section> : null}
 
         {payload ? (
-          <section className={styles.metricsGrid} data-testid="metrics-grid">
-            {metrics.map((metric, index) => (
-              <article
-                key={metric.label}
-                className={`${styles.metricCard} ${metric.hero && index < 2 ? styles.metricCardHero : ''}`}
-              >
-                <p className={styles.metricLabel}>{metric.label}</p>
-                <p className={styles.metricValue}>{metric.value}</p>
-                {metric.detail ? <p className={styles.metricDetail}>{metric.detail}</p> : null}
-              </article>
-            ))}
+          <section className={`${styles.panel} ${styles.snapshotPanel}`} data-testid="performance-snapshot">
+            <div className={styles.sectionHeader}>
+              <h2 className={styles.sectionTitle}>Performance Snapshot</h2>
+              <p className={styles.sectionHint}>Consolidated totals, coefficient context, and meet runway projection.</p>
+            </div>
+
+            <div className={styles.snapshotGrid}>
+              <div className={styles.snapshotMetrics}>
+                <div className={styles.totalsGrid}>
+                  <article className={styles.totalCard}>
+                    <p className={styles.metricLabel}>Current Total</p>
+                    <p className={styles.metricValue}>{formatKg(payload.stats.current.total)}</p>
+                  </article>
+                  <article className={styles.totalCard}>
+                    <p className={styles.metricLabel}>Block Projected Total</p>
+                    <p className={styles.metricValue}>{formatKg(payload.stats.projected.total)}</p>
+                  </article>
+                  <article className={`${styles.totalCard} ${styles.totalCardStrong}`}>
+                    <p className={styles.metricLabel}>Meet Projected Total</p>
+                    <p className={styles.metricValue}>{formatKg(meetProjection.projected.total)}</p>
+                  </article>
+                </div>
+
+                <div className={styles.coefficientRow}>
+                  <div className={styles.coefficientItem}>
+                    <span>DOTS</span>
+                    <strong>
+                      {formatScore(payload.stats.current.dots)} → {formatScore(payload.stats.projected.dots)}
+                    </strong>
+                  </div>
+                  <div className={styles.coefficientItem}>
+                    <span>Wilks</span>
+                    <strong>
+                      {formatScore(payload.stats.current.wilks)} → {formatScore(payload.stats.projected.wilks)}
+                    </strong>
+                  </div>
+                  <div className={styles.coefficientItem}>
+                    <span>GL</span>
+                    <strong>
+                      {formatScore(payload.stats.current.gl)} → {formatScore(payload.stats.projected.gl)}
+                    </strong>
+                  </div>
+                </div>
+
+                <div className={styles.liftGrid}>
+                  <div className={styles.liftGridHeader}>Lift</div>
+                  <div className={styles.liftGridHeader}>Current</div>
+                  <div className={styles.liftGridHeader}>Blended Rate</div>
+                  <div className={styles.liftGridHeader}>Meet Projection</div>
+
+                  {(['squat', 'bench', 'deadlift'] as const).map((lift) => (
+                    <Fragment key={lift}>
+                      <div className={styles.liftLabel}>{lift[0].toUpperCase() + lift.slice(1)}</div>
+                      <div>{formatKg(meetProjection.current[lift])}</div>
+                      <div>{formatRate(analytics.growthRates[lift].blendedRate)}</div>
+                      <div>{formatKg(meetProjection.projected[lift])}</div>
+                    </Fragment>
+                  ))}
+                </div>
+              </div>
+
+              <aside className={styles.projectionControls}>
+                <h3 className={styles.cardTitle}>Projection Controls</h3>
+                <p className={styles.sectionHint}>Adjust target date and tracking point for projection runway.</p>
+
+                <label className={styles.controlLabel}>
+                  <span>Competition Date</span>
+                  <input type="date" value={meetDate} onChange={(event) => setMeetDate(event.target.value)} />
+                </label>
+
+                <label className={styles.controlLabel}>
+                  <span>Current Week Override</span>
+                  <select
+                    value={manualWeek}
+                    onChange={(event) => {
+                      setManualWeek(event.target.value);
+                      if (!event.target.value) {
+                        setManualDay('');
+                      }
+                    }}
+                  >
+                    <option value="">Auto</option>
+                    {weekOptions.map((week) => (
+                      <option key={week} value={String(week)}>
+                        Week {week}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className={styles.controlLabel}>
+                  <span>Current Day Override</span>
+                  <select value={manualDay} onChange={(event) => setManualDay(event.target.value)}>
+                    <option value="">Auto</option>
+                    {dayOptions.map((day) => (
+                      <option key={day} value={String(day)}>
+                        Day {day}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <div className={styles.positionSummary}>
+                  <span className={`${styles.badge} ${currentPosition.source === 'manual' ? styles.badgeDirty : styles.badgeClean}`}>
+                    {currentPosition.source === 'manual' ? 'Manual' : 'Inferred'}
+                  </span>
+                  <span>{currentPositionLabel}</span>
+                </div>
+
+                {currentPosition.source === 'inferred' && currentPosition.completionPct !== null ? (
+                  <p className={styles.sectionHint}>Inference confidence: {currentPosition.completionPct.toFixed(1)}% section completion.</p>
+                ) : null}
+
+                <p className={styles.sectionHint}>Weeks remaining to meet: {meetProjection.weeksRemaining}</p>
+              </aside>
+            </div>
+          </section>
+        ) : null}
+
+        {payload ? (
+          <section className={styles.chartsGrid}>
+            <div className={`${styles.panel} ${styles.chartCardWide}`}>
+              <OverallPrimaryProgressChart timeline={timeline} />
+            </div>
+            <div className={`${styles.panel} ${styles.chartCard}`}>
+              <BlockPrimaryProgressChart primaryByWeek={payload.stats.primaryByWeek} />
+            </div>
+            <div className={`${styles.panel} ${styles.chartCard}`}>
+              <BlockComparisonChart comparisons={analytics.blockComparisons} />
+            </div>
+            <div className={`${styles.panel} ${styles.chartCard}`}>
+              <MeetProjectionChart projection={meetProjection} />
+            </div>
           </section>
         ) : null}
 
@@ -323,31 +500,17 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
           </section>
         ) : null}
 
-        {payload ? (
-          <section className={styles.chartsGrid}>
-            <div className={`${styles.panel} ${styles.chartCardWide}`}>
-              <OverallPrimaryProgressChart timeline={payload.overallProgress.timeline} />
-            </div>
-            <div className={`${styles.panel} ${styles.chartCard}`}>
-              <BlockPrimaryProgressChart primaryByWeek={payload.stats.primaryByWeek} />
-            </div>
-            <div className={`${styles.panel} ${styles.chartCard}`}>
-              <GrowthDeltaChart growth={payload.stats.growth} />
-            </div>
-          </section>
-        ) : null}
-
         <section className={styles.panel}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Editable Rows (Actual Load / RPE)</h2>
             <p className={styles.sectionHint}>
-              Full-row visibility with week separators and sticky headers for dense editing.
+              Week-grouped and day-ordered editing for predictable training flow updates.
             </p>
           </div>
 
           {isLoading ? <p className={styles.sectionHint}>Loading block data...</p> : null}
 
-          {!payload || !payload.blockData.rows.length ? (
+          {!payload || !rows.length ? (
             <p className={styles.sectionHint}>No editable rows available for this block.</p>
           ) : (
             <div className={styles.tableContainer}>
@@ -355,8 +518,6 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
                 <thead>
                   <tr>
                     <th>Exercise</th>
-                    <th>Week</th>
-                    <th>Day</th>
                     <th>Actual Load</th>
                     <th>RPE</th>
                     <th>Row Status</th>
@@ -364,72 +525,83 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
                   </tr>
                 </thead>
                 <tbody>
-                  {rowGroups.map((group) => (
-                    <Fragment key={group.key}>
+                  {analytics.weekSections.map((week) => (
+                    <Fragment key={week.key}>
                       <tr className={styles.weekDivider} data-testid="week-divider">
-                        <td colSpan={7}>
-                          {group.label} | {group.rows.length} rows
+                        <td colSpan={5}>
+                          {week.label} | {week.rows.length} rows
                         </td>
                       </tr>
 
-                      {group.rows.map((row) => {
-                        const rowUpdates = getRowUpdates(row);
-                        const rowDirty = rowUpdates.length > 0;
-                        const actualDirty = rowUpdates.some((update) => update.field === 'actualLoad');
-                        const rpeDirty = rowUpdates.some((update) => update.field === 'rpe');
-                        const actualLoadCell = row.actualLoadCell;
-                        const rpeCell = row.rpeCell;
-
-                        return (
-                          <tr key={getRowKey(row)} className={rowDirty ? styles.rowDirty : ''}>
-                            <td>
-                              <div className={styles.exercise}>
-                                <span className={styles.exerciseName}>{row.exercise || '-'}</span>
-                                <span className={styles.exerciseMeta}>{row.dayName || dayDisplay(row)}</span>
-                              </div>
-                            </td>
-                            <td>{weekDisplay(row)}</td>
-                            <td>{dayDisplay(row)}</td>
-                            <td>
-                              {actualLoadCell ? (
-                                <input
-                                  className={`${styles.cellInput} ${actualDirty ? styles.cellInputDirty : ''}`}
-                                  value={getPendingFieldValue(row, 'actualLoad')}
-                                  onChange={(event) => onPendingValueChange(actualLoadCell, 'actualLoad', event.target.value)}
-                                />
-                              ) : (
-                                '-'
-                              )}
-                            </td>
-                            <td>
-                              {rpeCell ? (
-                                <input
-                                  className={`${styles.cellInput} ${rpeDirty ? styles.cellInputDirty : ''}`}
-                                  value={getPendingFieldValue(row, 'rpe')}
-                                  onChange={(event) => onPendingValueChange(rpeCell, 'rpe', event.target.value)}
-                                />
-                              ) : (
-                                '-'
-                              )}
-                            </td>
-                            <td>
-                              <span className={`${styles.badge} ${rowDirty ? styles.badgeDirty : styles.badgeClean}`}>
-                                {rowDirty ? 'Dirty' : 'Clean'}
-                              </span>
-                            </td>
-                            <td className={styles.actionsCell}>
-                              <button
-                                type="button"
-                                className={styles.buttonSecondary}
-                                disabled={isSaving || !rowDirty}
-                                onClick={() => onSaveRow(row)}
-                              >
-                                Save Row
-                              </button>
+                      {week.days.map((day) => (
+                        <Fragment key={day.key}>
+                          <tr className={styles.dayDivider} data-testid="day-divider">
+                            <td colSpan={5}>
+                              {day.label}
+                              {day.dayName ? ` · ${day.dayName}` : ''} · {Math.round(day.completionPct * 100)}% complete
                             </td>
                           </tr>
-                        );
-                      })}
+
+                          {day.rows.map((row: BlockRow) => {
+                            const rowUpdates = getRowUpdates(row);
+                            const rowDirty = rowUpdates.length > 0;
+                            const actualDirty = rowUpdates.some((update) => update.field === 'actualLoad');
+                            const rpeDirty = rowUpdates.some((update) => update.field === 'rpe');
+                            const actualLoadCell = row.actualLoadCell;
+                            const rpeCell = row.rpeCell;
+
+                            return (
+                              <tr key={getRowKey(row)} className={rowDirty ? styles.rowDirty : ''}>
+                                <td>
+                                  <div className={styles.exercise}>
+                                    <span className={styles.exerciseName}>{row.exercise || '-'}</span>
+                                    <span className={styles.exerciseMeta}>
+                                      {row.sets || '-'} x {row.reps || '-'}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td>
+                                  {actualLoadCell ? (
+                                    <input
+                                      className={`${styles.cellInput} ${actualDirty ? styles.cellInputDirty : ''}`}
+                                      value={getPendingFieldValue(row, 'actualLoad')}
+                                      onChange={(event) => onPendingValueChange(actualLoadCell, 'actualLoad', event.target.value)}
+                                    />
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td>
+                                  {rpeCell ? (
+                                    <input
+                                      className={`${styles.cellInput} ${rpeDirty ? styles.cellInputDirty : ''}`}
+                                      value={getPendingFieldValue(row, 'rpe')}
+                                      onChange={(event) => onPendingValueChange(rpeCell, 'rpe', event.target.value)}
+                                    />
+                                  ) : (
+                                    '-'
+                                  )}
+                                </td>
+                                <td>
+                                  <span className={`${styles.badge} ${rowDirty ? styles.badgeDirty : styles.badgeClean}`}>
+                                    {rowDirty ? 'Dirty' : 'Clean'}
+                                  </span>
+                                </td>
+                                <td className={styles.actionsCell}>
+                                  <button
+                                    type="button"
+                                    className={styles.buttonSecondary}
+                                    disabled={isSaving || !rowDirty}
+                                    onClick={() => onSaveRow(row)}
+                                  >
+                                    Save Row
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </Fragment>
+                      ))}
                     </Fragment>
                   ))}
                 </tbody>

@@ -16,11 +16,13 @@ test('dashboard renders redesigned layout and chart surfaces', async ({ page }) 
   await initialResponse;
 
   await expect(page.getByRole('heading', { name: 'Powerlifting Performance Dashboard' })).toBeVisible();
-  await expect(page.getByTestId('metrics-grid')).toBeVisible();
+  await expect(page.getByTestId('performance-snapshot')).toBeVisible();
   await expect(page.getByTestId('overall-chart-panel')).toBeVisible();
   await expect(page.getByTestId('block-chart-panel')).toBeVisible();
-  await expect(page.getByTestId('growth-chart-panel')).toBeVisible();
+  await expect(page.getByTestId('block-comparison-chart-panel')).toBeVisible();
+  await expect(page.getByTestId('meet-projection-chart-panel')).toBeVisible();
   await expect.poll(async () => page.locator('[data-testid="week-divider"]').count(), { timeout: 45000 }).toBeGreaterThan(0);
+  await expect.poll(async () => page.locator('[data-testid="day-divider"]').count(), { timeout: 45000 }).toBeGreaterThan(0);
 });
 
 test('overall chart legend toggles visible series', async ({ page }) => {

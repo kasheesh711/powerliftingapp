@@ -13,6 +13,15 @@ export interface PickerConfigResponse {
   appId: string | null;
 }
 
+export type ProjectionSource = 'manual' | 'inferred';
+
+export interface ProjectionControlsState {
+  meetDate: string;
+  currentWeek: number | null;
+  currentDay: number | null;
+  source: ProjectionSource;
+}
+
 export interface ConflictState {
   result: Extract<UpdateResult, { status: 'conflict' }>;
   updates: CellUpdateInput[];
