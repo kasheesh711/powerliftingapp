@@ -1,0 +1,584 @@
+.page {
+  min-height: 100vh;
+  padding: clamp(1rem, 2vw, 1.7rem);
+}
+
+.shell {
+  width: min(1420px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 1rem;
+  animation: fade-in-up 420ms ease both;
+}
+
+.panel {
+  background: var(--surface-1);
+  border: 1px solid var(--border-default);
+  border-radius: 1rem;
+  padding: clamp(0.9rem, 1.35vw, 1.2rem);
+  box-shadow: var(--shadow-soft);
+  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+
+.panel:hover {
+  transform: translateY(-2px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-panel);
+}
+
+.commandDeck {
+  display: grid;
+  gap: 1rem;
+}
+
+.commandHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: clamp(1.65rem, 2vw, 2.1rem);
+  line-height: 1.1;
+  color: var(--text-strong);
+}
+
+.subtitle {
+  margin: 0.42rem 0 0;
+  max-width: 65ch;
+  color: var(--text-muted);
+  font-size: 0.92rem;
+}
+
+.pending {
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+.pendingStrong {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.statusPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.54rem;
+  justify-content: flex-end;
+}
+
+.statusPill {
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  border-radius: 999px;
+  padding: 0.38rem 0.72rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.44rem;
+  font-size: 0.73rem;
+  line-height: 1;
+}
+
+.statusLabel {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.statusValue {
+  color: var(--text-strong);
+  font-weight: 600;
+  max-width: 210px;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.statusInactive {
+  color: var(--text-muted);
+}
+
+.controlGrid {
+  display: grid;
+  gap: 0.9rem;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
+  color: var(--text-strong);
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+}
+
+.connectionCard {
+  border: 1px solid var(--border-default);
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+  padding: 0.88rem;
+  display: grid;
+  gap: 0.72rem;
+}
+
+.connectionRows {
+  display: grid;
+  gap: 0.32rem;
+  color: var(--text-muted);
+  font-size: 0.84rem;
+}
+
+.connectionRows strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.56rem;
+}
+
+.inlineForm {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.inlineForm input {
+  flex: 1 1 280px;
+}
+
+.controlCard {
+  border: 1px solid var(--border-default);
+  border-radius: 0.9rem;
+  background: var(--surface-2);
+  padding: 0.88rem;
+  display: grid;
+  gap: 0.74rem;
+}
+
+.controlRow {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.controlLabel {
+  display: grid;
+  gap: 0.37rem;
+  flex: 1 1 280px;
+  max-width: 340px;
+}
+
+.controlLabel span {
+  color: var(--text-muted);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+}
+
+.controlLabel select {
+  width: 100%;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 0.55rem;
+  flex-wrap: wrap;
+}
+
+.infoHint {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+}
+
+.banner {
+  border-radius: 0.9rem;
+  border: 1px solid;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.86rem;
+}
+
+.bannerError {
+  border-color: color-mix(in srgb, var(--danger) 55%, var(--border-default) 45%);
+  background: color-mix(in srgb, var(--danger) 12%, transparent 88%);
+  color: color-mix(in srgb, var(--danger) 82%, white 18%);
+}
+
+.bannerWarn {
+  border-color: color-mix(in srgb, var(--warning) 64%, var(--border-default) 36%);
+  background: color-mix(in srgb, var(--warning) 11%, transparent 89%);
+  color: color-mix(in srgb, var(--warning) 80%, white 20%);
+}
+
+.metricsGrid {
+  display: grid;
+  gap: 0.72rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.metricCard {
+  border: 1px solid var(--border-default);
+  background: var(--surface-1);
+  border-radius: 0.95rem;
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.46rem;
+  grid-column: span 3;
+}
+
+.metricCardHero {
+  grid-column: span 6;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--surface-2) 88%, black 12%) 0%, var(--surface-1) 100%);
+}
+
+.metricLabel {
+  margin: 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+}
+
+.metricValue {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: clamp(1.2rem, 1.6vw, 1.58rem);
+  line-height: 1.1;
+}
+
+.metricDetail {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.recapGrid {
+  display: grid;
+  gap: 0.8rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.recapItem {
+  border: 1px solid var(--border-default);
+  background: var(--surface-2);
+  border-radius: 0.8rem;
+  padding: 0.72rem;
+}
+
+.recapLabel {
+  margin: 0;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.7rem;
+}
+
+.recapValue {
+  margin: 0.35rem 0 0;
+  color: var(--text);
+  font-size: 0.88rem;
+  line-height: 1.35;
+  white-space: pre-wrap;
+}
+
+.chartsGrid {
+  display: grid;
+  gap: 0.82rem;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+}
+
+.chartCard {
+  grid-column: span 6;
+}
+
+.chartCardWide {
+  grid-column: span 12;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.86rem;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: 1.07rem;
+  color: var(--text-strong);
+}
+
+.sectionHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+}
+
+.tableContainer {
+  border: 1px solid var(--border-default);
+  border-radius: 0.9rem;
+  overflow: auto;
+  max-height: min(66vh, 760px);
+  background: var(--surface-2);
+}
+
+.table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 920px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  background: color-mix(in srgb, var(--surface-3) 88%, black 12%);
+  border-bottom: 1px solid var(--border-default);
+  text-align: left;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+  padding: 0.62rem 0.62rem;
+}
+
+.table tbody td {
+  padding: 0.52rem 0.62rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 80%, transparent 20%);
+  vertical-align: top;
+  color: var(--text);
+  font-size: 0.86rem;
+}
+
+.weekDivider td {
+  background: color-mix(in srgb, var(--surface-3) 86%, black 14%);
+  color: var(--text-strong);
+  font-size: 0.79rem;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.62rem;
+  border-top: 1px solid var(--border-default);
+  border-bottom: 1px solid var(--border-default);
+}
+
+.exercise {
+  display: grid;
+  gap: 0.21rem;
+}
+
+.exerciseName {
+  color: var(--text-strong);
+  font-weight: 600;
+}
+
+.exerciseMeta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.cellInput {
+  width: 100%;
+  min-width: 88px;
+}
+
+.cellInputDirty {
+  border-color: color-mix(in srgb, var(--accent-primary) 68%, var(--border-default) 32%);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 26%, transparent 74%);
+}
+
+.rowDirty td {
+  background: color-mix(in srgb, var(--accent-primary) 7%, transparent 93%);
+}
+
+.badge {
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  padding: 0.2rem 0.52rem;
+  font-size: 0.69rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+}
+
+.badgeClean {
+  color: var(--text-muted);
+  background: var(--surface-2);
+}
+
+.badgeDirty {
+  color: var(--text-strong);
+  border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--border-default) 42%);
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent 82%);
+}
+
+.actionsCell {
+  white-space: nowrap;
+}
+
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgb(2 4 9 / 68%);
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+}
+
+.modalCard {
+  width: min(780px, 100%);
+  background: var(--surface-1);
+  border-radius: 1rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 46%, var(--border-default) 54%);
+  padding: 1rem;
+  display: grid;
+  gap: 0.85rem;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
+}
+
+.modalTitle {
+  margin: 0;
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  color: var(--text-strong);
+  font-size: 1.1rem;
+}
+
+.conflictList {
+  margin: 0;
+  padding-left: 1.05rem;
+  color: var(--text);
+  font-size: 0.84rem;
+  display: grid;
+  gap: 0.38rem;
+}
+
+.conflictList code {
+  color: var(--text-strong);
+}
+
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.buttonPrimary,
+.buttonSecondary,
+.buttonGhost,
+.buttonDanger {
+  appearance: none;
+  border: 1px solid transparent;
+  border-radius: 0.7rem;
+  padding: 0.58rem 0.82rem;
+  cursor: pointer;
+  font-weight: 600;
+  line-height: 1;
+  font-size: 0.81rem;
+  transition: transform 120ms ease, border-color 120ms ease, background-color 120ms ease;
+}
+
+.buttonPrimary:hover,
+.buttonSecondary:hover,
+.buttonGhost:hover,
+.buttonDanger:hover {
+  transform: translateY(-1px);
+}
+
+.buttonPrimary {
+  background: var(--accent-primary);
+  color: #f8fbff;
+}
+
+.buttonPrimary:disabled {
+  opacity: 0.52;
+}
+
+.buttonSecondary {
+  background: var(--surface-3);
+  border-color: var(--border-default);
+  color: var(--text);
+}
+
+.buttonGhost {
+  background: transparent;
+  border-color: var(--border-default);
+  color: var(--text);
+}
+
+.buttonDanger {
+  background: color-mix(in srgb, var(--danger) 22%, transparent 78%);
+  border-color: color-mix(in srgb, var(--danger) 52%, var(--border-default) 48%);
+  color: color-mix(in srgb, var(--danger) 84%, white 16%);
+}
+
+.buttonSecondary:disabled,
+.buttonGhost:disabled,
+.buttonDanger:disabled,
+.buttonPrimary:disabled {
+  cursor: not-allowed;
+  transform: none;
+}
+
+@media (max-width: 1120px) {
+  .metricCard {
+    grid-column: span 4;
+  }
+
+  .metricCardHero {
+    grid-column: span 6;
+  }
+
+  .chartCard {
+    grid-column: span 12;
+  }
+}
+
+@media (max-width: 960px) {
+  .commandHeader {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .statusPills {
+    justify-content: flex-start;
+  }
+
+  .controlGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .metricCard,
+  .metricCardHero {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 680px) {
+  .page {
+    padding: 0.75rem;
+  }
+
+  .metricCard,
+  .metricCardHero {
+    grid-column: span 12;
+  }
+
+  .tableContainer {
+    max-height: 62vh;
+  }
+}
