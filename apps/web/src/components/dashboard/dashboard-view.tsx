@@ -5,6 +5,12 @@ import { BlockPrimaryProgressChart } from './charts/block-primary-progress-chart
 import { BlockComparisonChart } from './charts/block-comparison-chart';
 import { MeetProjectionChart } from './charts/meet-projection-chart';
 import { OverallPrimaryProgressChart } from './charts/overall-primary-progress-chart';
+import {
+  getDefaultSelectedWeightClasses,
+  getOpenIpfWeightClassOptions,
+  normalizeSelectedWeightClasses,
+  type ProjectionSex,
+} from './openipf-projection';
 import type { DashboardViewProps } from './types';
 import { buildDashboardAnalytics, buildMeetProjection, type CurrentPositionVM } from './view-models';
 
@@ -14,7 +20,14 @@ const DEFAULT_MEET_DATE = '2026-11-07';
 const STORAGE_KEYS = {
   meetDate: 'dashboard.meetDate',
   currentWeek: 'dashboard.currentWeek',
-  currentDay: 'dashboard.currentDay'
+  currentDay: 'dashboard.currentDay',
+  projectionSex: 'dashboard.projectionSex',
+  projectionBodyweightKg: 'dashboard.projectionBodyweightKg',
+  completedMeets: 'dashboard.completedMeets',
+  selectedWeightClasses: 'dashboard.selectedWeightClasses',
+  overrideSquatRate: 'dashboard.overrideSquatRate',
+  overrideBenchRate: 'dashboard.overrideBenchRate',
+  overrideDeadliftRate: 'dashboard.overrideDeadliftRate'
 } as const;
 
 function formatKg(value: number): string {
@@ -40,6 +53,60 @@ function readStoredInt(value: string | null): string {
   }
 
   return String(parsed);
+}
+
+function readStoredNonNegativeInt(value: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return '';
+  }
+
+  return String(parsed);
+}
+
+function readStoredNonNegativeFloat(value: string | null): string {
+  if (!value) {
+    return '';
+  }
+
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return '';
+  }
+
+  return String(parsed);
+}
+
+function parsePositiveFloat(value: string, fallback: number): number {
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function parseNonNegativeInt(value: string, fallback: number): number {
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return fallback;
+  }
+  return parsed;
+}
+
+function parseOptionalRate(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+
+  const parsed = Number.parseFloat(value);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return null;
+  }
+  return parsed;
 }
 
 export function DashboardView(props: DashboardViewProps): JSX.Element {
@@ -78,6 +145,13 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   const [meetDate, setMeetDate] = useState(DEFAULT_MEET_DATE);
   const [manualWeek, setManualWeek] = useState('');
   const [manualDay, setManualDay] = useState('');
+  const [projectionSex, setProjectionSex] = useState<ProjectionSex | ''>('');
+  const [projectionBodyweightKg, setProjectionBodyweightKg] = useState('');
+  const [completedMeets, setCompletedMeets] = useState('0');
+  const [selectedWeightClasses, setSelectedWeightClasses] = useState<string[]>([]);
+  const [overrideSquatRate, setOverrideSquatRate] = useState('');
+  const [overrideBenchRate, setOverrideBenchRate] = useState('');
+  const [overrideDeadliftRate, setOverrideDeadliftRate] = useState('');
 
   useEffect(() => {
     if (typeof window === 'undefined') {
@@ -87,6 +161,13 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     const storedMeetDate = window.localStorage.getItem(STORAGE_KEYS.meetDate);
     const storedWeek = window.localStorage.getItem(STORAGE_KEYS.currentWeek);
     const storedDay = window.localStorage.getItem(STORAGE_KEYS.currentDay);
+    const storedProjectionSex = window.localStorage.getItem(STORAGE_KEYS.projectionSex);
+    const storedBodyweightKg = window.localStorage.getItem(STORAGE_KEYS.projectionBodyweightKg);
+    const storedCompletedMeets = window.localStorage.getItem(STORAGE_KEYS.completedMeets);
+    const storedWeightClasses = window.localStorage.getItem(STORAGE_KEYS.selectedWeightClasses);
+    const storedOverrideSquatRate = window.localStorage.getItem(STORAGE_KEYS.overrideSquatRate);
+    const storedOverrideBenchRate = window.localStorage.getItem(STORAGE_KEYS.overrideBenchRate);
+    const storedOverrideDeadliftRate = window.localStorage.getItem(STORAGE_KEYS.overrideDeadliftRate);
 
     if (storedMeetDate && /^\d{4}-\d{2}-\d{2}$/.test(storedMeetDate)) {
       setMeetDate(storedMeetDate);
@@ -94,6 +175,28 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
 
     setManualWeek(readStoredInt(storedWeek));
     setManualDay(readStoredInt(storedDay));
+
+    if (storedProjectionSex === 'male' || storedProjectionSex === 'female') {
+      setProjectionSex(storedProjectionSex);
+    }
+
+    setProjectionBodyweightKg(readStoredNonNegativeFloat(storedBodyweightKg));
+    setCompletedMeets(readStoredNonNegativeInt(storedCompletedMeets) || '0');
+    setOverrideSquatRate(readStoredNonNegativeFloat(storedOverrideSquatRate));
+    setOverrideBenchRate(readStoredNonNegativeFloat(storedOverrideBenchRate));
+    setOverrideDeadliftRate(readStoredNonNegativeFloat(storedOverrideDeadliftRate));
+
+    if (storedWeightClasses) {
+      try {
+        const parsed = JSON.parse(storedWeightClasses);
+        if (Array.isArray(parsed)) {
+          const classes = parsed.filter((entry): entry is string => typeof entry === 'string');
+          setSelectedWeightClasses(classes);
+        }
+      } catch {
+        // Ignore malformed persisted class selection payloads.
+      }
+    }
   }, []);
 
   useEffect(() => {
@@ -114,7 +217,51 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     } else {
       window.localStorage.removeItem(STORAGE_KEYS.currentDay);
     }
-  }, [meetDate, manualWeek, manualDay]);
+
+    if (projectionSex) {
+      window.localStorage.setItem(STORAGE_KEYS.projectionSex, projectionSex);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.projectionSex);
+    }
+
+    if (projectionBodyweightKg.trim()) {
+      window.localStorage.setItem(STORAGE_KEYS.projectionBodyweightKg, projectionBodyweightKg);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.projectionBodyweightKg);
+    }
+
+    window.localStorage.setItem(STORAGE_KEYS.completedMeets, completedMeets);
+    window.localStorage.setItem(STORAGE_KEYS.selectedWeightClasses, JSON.stringify(selectedWeightClasses));
+
+    if (overrideSquatRate.trim()) {
+      window.localStorage.setItem(STORAGE_KEYS.overrideSquatRate, overrideSquatRate);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.overrideSquatRate);
+    }
+
+    if (overrideBenchRate.trim()) {
+      window.localStorage.setItem(STORAGE_KEYS.overrideBenchRate, overrideBenchRate);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.overrideBenchRate);
+    }
+
+    if (overrideDeadliftRate.trim()) {
+      window.localStorage.setItem(STORAGE_KEYS.overrideDeadliftRate, overrideDeadliftRate);
+    } else {
+      window.localStorage.removeItem(STORAGE_KEYS.overrideDeadliftRate);
+    }
+  }, [
+    completedMeets,
+    manualDay,
+    manualWeek,
+    meetDate,
+    overrideBenchRate,
+    overrideDeadliftRate,
+    overrideSquatRate,
+    projectionBodyweightKg,
+    projectionSex,
+    selectedWeightClasses
+  ]);
 
   const blockOptions = useMemo(
     () => (initial?.blocks || []).filter((entry) => entry.isBlock).map((entry) => entry.name),
@@ -125,6 +272,35 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
   const timeline = payload?.overallProgress.timeline || [];
 
   const analytics = useMemo(() => buildDashboardAnalytics(rows, payload?.overallProgress), [rows, payload?.overallProgress]);
+  const modelSex: ProjectionSex =
+    projectionSex === 'female' || projectionSex === 'male'
+      ? projectionSex
+      : payload?.basics.sex === 'female'
+        ? 'female'
+        : 'male';
+
+  const weightClassOptions = useMemo(() => getOpenIpfWeightClassOptions(modelSex), [modelSex]);
+  const activeWeightClasses = useMemo(() => {
+    const normalized = normalizeSelectedWeightClasses(modelSex, selectedWeightClasses);
+    return normalized.length ? normalized : getDefaultSelectedWeightClasses(modelSex);
+  }, [modelSex, selectedWeightClasses]);
+
+  const modelBodyweightKg = parsePositiveFloat(projectionBodyweightKg, payload?.basics.bodyweight || 80);
+  const modelCompletedMeets = parseNonNegativeInt(completedMeets, 0);
+
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+
+    if (!projectionSex) {
+      setProjectionSex(payload.basics.sex === 'female' ? 'female' : 'male');
+    }
+
+    if (!projectionBodyweightKg.trim() && Number.isFinite(payload.basics.bodyweight) && payload.basics.bodyweight > 0) {
+      setProjectionBodyweightKg(String(payload.basics.bodyweight));
+    }
+  }, [payload, projectionBodyweightKg, projectionSex]);
 
   const weekOptions = useMemo(
     () =>
@@ -181,6 +357,33 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
     };
   }, [analytics.inferredPosition, analytics.weekSections, manualDay, manualWeek]);
 
+  const toggleWeightClass = (weightClass: string): void => {
+    setSelectedWeightClasses((current) => {
+      const normalizedCurrent = normalizeSelectedWeightClasses(modelSex, current);
+      const base = normalizedCurrent.length ? normalizedCurrent : getDefaultSelectedWeightClasses(modelSex);
+      const hasWeightClass = base.includes(weightClass);
+
+      if (!hasWeightClass) {
+        return normalizeSelectedWeightClasses(modelSex, [...base, weightClass]);
+      }
+
+      if (base.length === 1) {
+        return base;
+      }
+
+      return base.filter((value) => value !== weightClass);
+    });
+  };
+
+  const manualRateOverrides = useMemo(
+    () => ({
+      squat: parseOptionalRate(overrideSquatRate),
+      bench: parseOptionalRate(overrideBenchRate),
+      deadlift: parseOptionalRate(overrideDeadliftRate)
+    }),
+    [overrideBenchRate, overrideDeadliftRate, overrideSquatRate]
+  );
+
   const meetProjection = useMemo(
     () =>
       buildMeetProjection({
@@ -188,9 +391,27 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
         timeline,
         meetDate,
         currentPosition,
-        growthRates: analytics.growthRates
+        growthRates: analytics.growthRates,
+        modelSettings: {
+          sex: modelSex,
+          bodyweightKg: modelBodyweightKg,
+          completedMeets: modelCompletedMeets,
+          selectedWeightClasses: activeWeightClasses,
+          manualRateOverrides
+        }
       }),
-    [analytics.growthRates, currentPosition, meetDate, rows, timeline]
+    [
+      activeWeightClasses,
+      analytics.growthRates,
+      currentPosition,
+      manualRateOverrides,
+      meetDate,
+      modelBodyweightKg,
+      modelCompletedMeets,
+      modelSex,
+      rows,
+      timeline
+    ]
   );
 
   const currentPositionLabel =
@@ -376,23 +597,91 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
                 <div className={styles.liftGrid}>
                   <div className={styles.liftGridHeader}>Lift</div>
                   <div className={styles.liftGridHeader}>Current</div>
-                  <div className={styles.liftGridHeader}>Blended Rate</div>
+                  <div className={styles.liftGridHeader}>Start Rate</div>
+                  <div className={styles.liftGridHeader}>OpenIPF Target</div>
                   <div className={styles.liftGridHeader}>Meet Projection</div>
 
                   {(['squat', 'bench', 'deadlift'] as const).map((lift) => (
                     <Fragment key={lift}>
                       <div className={styles.liftLabel}>{lift[0].toUpperCase() + lift.slice(1)}</div>
                       <div>{formatKg(meetProjection.current[lift])}</div>
-                      <div>{formatRate(analytics.growthRates[lift].blendedRate)}</div>
+                      <div>{formatRate(meetProjection.rates[lift].usedStartRate)}</div>
+                      <div>{formatRate(meetProjection.rates[lift].targetRate)}</div>
                       <div>{formatKg(meetProjection.projected[lift])}</div>
                     </Fragment>
                   ))}
                 </div>
+
+                <p className={styles.sectionHint}>
+                  OpenIPF model: {meetProjection.model.sex === 'male' ? 'Men' : 'Women'} · Classes{' '}
+                  {meetProjection.model.selectedWeightClasses.join(', ')} · Transition {meetProjection.model.transitionLabel} · Cohort n=
+                  {meetProjection.model.sampleSize}
+                </p>
               </div>
 
               <aside className={styles.projectionControls}>
                 <h3 className={styles.cardTitle}>Projection Controls</h3>
-                <p className={styles.sectionHint}>Adjust target date and tracking point for projection runway.</p>
+                <p className={styles.sectionHint}>
+                  Configure OpenIPF-calibrated meet projection. Men and women are modeled on separate cohorts.
+                </p>
+
+                <label className={styles.controlLabel}>
+                  <span>Sex</span>
+                  <select
+                    data-testid="projection-sex-select"
+                    value={modelSex}
+                    onChange={(event) => setProjectionSex(event.target.value as ProjectionSex)}
+                  >
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                  </select>
+                </label>
+
+                <label className={styles.controlLabel}>
+                  <span>Bodyweight (kg)</span>
+                  <input
+                    data-testid="projection-bodyweight-input"
+                    type="number"
+                    min="30"
+                    step="0.1"
+                    value={projectionBodyweightKg}
+                    onChange={(event) => setProjectionBodyweightKg(event.target.value)}
+                  />
+                </label>
+
+                <label className={styles.controlLabel}>
+                  <span>Completed Meets</span>
+                  <input
+                    data-testid="projection-meets-input"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={completedMeets}
+                    onChange={(event) => setCompletedMeets(event.target.value)}
+                  />
+                </label>
+
+                <div className={styles.controlLabel}>
+                  <span>Weight Classes</span>
+                  <div className={styles.weightClassGrid} data-testid="projection-weight-class-grid">
+                    {weightClassOptions.map((weightClass) => {
+                      const selected = activeWeightClasses.includes(weightClass);
+                      return (
+                        <label
+                          key={weightClass}
+                          className={`${styles.weightClassOption} ${selected ? styles.weightClassOptionActive : ''}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            onChange={() => toggleWeightClass(weightClass)}
+                          />
+                          <span>{weightClass}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
 
                 <label className={styles.controlLabel}>
                   <span>Competition Date</span>
@@ -431,6 +720,48 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
                   </select>
                 </label>
 
+                <div className={styles.controlLabel}>
+                  <span>Manual Start Rate Overrides (kg/week)</span>
+                  <div className={styles.rateOverrides}>
+                    <label>
+                      <span>Squat</span>
+                      <input
+                        data-testid="projection-override-squat"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={overrideSquatRate}
+                        placeholder="Auto"
+                        onChange={(event) => setOverrideSquatRate(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Bench</span>
+                      <input
+                        data-testid="projection-override-bench"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={overrideBenchRate}
+                        placeholder="Auto"
+                        onChange={(event) => setOverrideBenchRate(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>Deadlift</span>
+                      <input
+                        data-testid="projection-override-deadlift"
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        value={overrideDeadliftRate}
+                        placeholder="Auto"
+                        onChange={(event) => setOverrideDeadliftRate(event.target.value)}
+                      />
+                    </label>
+                  </div>
+                </div>
+
                 <div className={styles.positionSummary}>
                   <span className={`${styles.badge} ${currentPosition.source === 'manual' ? styles.badgeDirty : styles.badgeClean}`}>
                     {currentPosition.source === 'manual' ? 'Manual' : 'Inferred'}
@@ -442,6 +773,10 @@ export function DashboardView(props: DashboardViewProps): JSX.Element {
                   <p className={styles.sectionHint}>Inference confidence: {currentPosition.completionPct.toFixed(1)}% section completion.</p>
                 ) : null}
 
+                <p className={styles.sectionHint}>
+                  Active transition: {meetProjection.model.transitionLabel} (max supported {meetProjection.model.maxTransition}-&gt;
+                  {meetProjection.model.maxTransition + 1}).
+                </p>
                 <p className={styles.sectionHint}>Weeks remaining to meet: {meetProjection.weeksRemaining}</p>
               </aside>
             </div>

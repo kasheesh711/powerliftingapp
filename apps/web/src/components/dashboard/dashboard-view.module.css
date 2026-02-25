@@ -298,7 +298,7 @@
   border-radius: 0.82rem;
   background: var(--surface-2);
   display: grid;
-  grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1.1fr repeat(4, minmax(0, 1fr));
   gap: 0;
   overflow: hidden;
 }
@@ -308,7 +308,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent 15%);
 }
 
-.liftGrid > div:nth-last-child(-n + 4) {
+.liftGrid > div:nth-last-child(-n + 5) {
   border-bottom: none;
 }
 
@@ -331,6 +331,54 @@
   display: grid;
   align-content: start;
   gap: 0.62rem;
+}
+
+.projectionControls .controlLabel {
+  max-width: none;
+}
+
+.weightClassGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.38rem;
+}
+
+.weightClassOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.58rem;
+  background: var(--surface-3);
+  padding: 0.32rem 0.44rem;
+  color: var(--text);
+  font-size: 0.74rem;
+}
+
+.weightClassOption input {
+  margin: 0;
+}
+
+.weightClassOptionActive {
+  border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--border-default) 42%);
+  background: color-mix(in srgb, var(--accent-primary) 16%, transparent 84%);
+}
+
+.rateOverrides {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.rateOverrides label {
+  display: grid;
+  gap: 0.24rem;
+}
+
+.rateOverrides label span {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  font-size: 0.64rem;
 }
 
 .positionSummary {
@@ -652,6 +700,10 @@
     border-top: 1px solid var(--border-default);
     background: color-mix(in srgb, var(--surface-3) 82%, black 18%);
   }
+
+  .weightClassGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 680px) {
@@ -665,5 +717,9 @@
 
   .tableContainer {
     max-height: 62vh;
+  }
+
+  .weightClassGrid {
+    grid-template-columns: 1fr;
   }
 }

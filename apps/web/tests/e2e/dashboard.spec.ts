@@ -21,6 +21,13 @@ test('dashboard renders redesigned layout and chart surfaces', async ({ page }) 
   await expect(page.getByTestId('block-chart-panel')).toBeVisible();
   await expect(page.getByTestId('block-comparison-chart-panel')).toBeVisible();
   await expect(page.getByTestId('meet-projection-chart-panel')).toBeVisible();
+  await expect(page.getByTestId('projection-sex-select')).toBeVisible();
+  await expect(page.getByTestId('projection-bodyweight-input')).toBeVisible();
+  await expect(page.getByTestId('projection-meets-input')).toBeVisible();
+  await expect(page.getByTestId('projection-weight-class-grid')).toBeVisible();
+  await expect(page.getByTestId('projection-override-squat')).toBeVisible();
+  await expect(page.getByTestId('projection-override-bench')).toBeVisible();
+  await expect(page.getByTestId('projection-override-deadlift')).toBeVisible();
   await expect.poll(async () => page.locator('[data-testid="week-divider"]').count(), { timeout: 45000 }).toBeGreaterThan(0);
   await expect.poll(async () => page.locator('[data-testid="day-divider"]').count(), { timeout: 45000 }).toBeGreaterThan(0);
 });
