@@ -1,0 +1,19 @@
+# Global owners
+* @team/platform
+
+# App surface
+/apps/web/ @team/web
+
+# Domain and data engine
+/packages/domain/ @team/domain
+/packages/data/ @team/data
+
+# Shared UI and config
+/packages/ui/ @team/design-systems
+/packages/config/ @team/platform
+
+# Legacy Apps Script source
+/app/ @team/legacy
+
+# Documentation and ADRs
+/docs/ @team/architecture

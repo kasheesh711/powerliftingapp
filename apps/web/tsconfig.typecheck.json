@@ -1,0 +1,23 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*",
+    "../../packages/domain/src/**/*",
+    "../../packages/data/src/**/*",
+    "../../packages/ui/src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "src/**/*.test.ts",
+    "../../packages/domain/src/**/*.test.ts",
+    "../../packages/data/src/**/*.test.ts",
+    "../../packages/ui/src/**/*.test.ts"
+  ]
+}

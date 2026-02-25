@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": "..",
+    "composite": false,
+    "baseUrl": ".",
+    "paths": {
+      "@powerlifting/domain": ["../domain/src/index.ts"],
+      "@powerlifting/domain/*": ["../domain/src/*"]
+    }
+  },
+  "include": ["src/**/*", "../domain/src/**/*"],
+  "exclude": ["src/**/*.test.ts", "../domain/src/**/*.test.ts"]
+}

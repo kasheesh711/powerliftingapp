@@ -1,0 +1,115 @@
+openapi: 3.1.0
+info:
+  title: Powerlifting Dashboard API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/dashboard/initial:
+    get:
+      summary: Get initial payload (blocks, basics, config)
+      responses:
+        '200':
+          description: Initial payload
+  /api/dashboard/blocks:
+    get:
+      summary: List available blocks
+      parameters:
+        - in: query
+          name: forceRefresh
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Blocks list
+  /api/dashboard/block/{blockName}:
+    get:
+      summary: Load dashboard payload for one block
+      parameters:
+        - in: path
+          name: blockName
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: forceRefresh
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Dashboard payload
+  /api/dashboard/block/{blockName}/updates:
+    post:
+      summary: Update editable cells for a block
+      parameters:
+        - in: path
+          name: blockName
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                updates:
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      cellA1:
+                        type: string
+                      newValue:
+                        oneOf:
+                          - type: string
+                          - type: number
+                      originalValue:
+                        oneOf:
+                          - type: string
+                          - type: number
+                          - type: 'null'
+                      field:
+                        type: string
+                        enum: [actualLoad, rpe]
+                forceOverwrite:
+                  type: boolean
+      responses:
+        '200':
+          description: Update result or conflict
+  /api/spreadsheets/select:
+    get:
+      summary: Get current selected spreadsheet for authenticated user
+      responses:
+        '200':
+          description: Current selected spreadsheet payload
+    post:
+      summary: Select spreadsheet by URL or spreadsheetId
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                spreadsheetUrl:
+                  type: string
+                  format: uri
+                spreadsheetId:
+                  type: string
+      responses:
+        '200':
+          description: Selection persisted payload
+  /api/spreadsheets/picker-token:
+    get:
+      summary: Get Google Drive Picker access token
+      responses:
+        '200':
+          description: Token payload
+  /api/spreadsheets/picker-config:
+    get:
+      summary: Get Drive Picker configuration for authenticated user
+      responses:
+        '200':
+          description: Picker configuration payload

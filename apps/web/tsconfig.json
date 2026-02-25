@@ -1,0 +1,28 @@
+{
+  "extends": "../../packages/config/tsconfig/base.json",
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "preserve",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "allowJs": false,
+    "incremental": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "plugins": [{ "name": "next" }],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@powerlifting/domain": ["../../packages/domain/src/index.ts"],
+      "@powerlifting/domain/*": ["../../packages/domain/src/*"],
+      "@powerlifting/data": ["../../packages/data/src/index.ts"],
+      "@powerlifting/data/*": ["../../packages/data/src/*"],
+      "@powerlifting/ui": ["../../packages/ui/src/index.ts"],
+      "@powerlifting/ui/*": ["../../packages/ui/src/*"]
+    },
+    "composite": true
+  },
+  "include": ["next-env.d.ts", "src/**/*", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}

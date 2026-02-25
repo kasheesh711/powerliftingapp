@@ -1,0 +1,41 @@
+{
+  "name": "powerlifting-app-monorepo",
+  "private": true,
+  "packageManager": "npm@10.9.2",
+  "version": "2.0.0",
+  "description": "Powerlifting dashboard migration monorepo",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --parallel",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test:e2e",
+    "parity": "turbo run parity",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "gas:watch": "clasp push -w -f",
+    "gas:deploy": "clasp push -f",
+    "watch": "npm run gas:watch",
+    "deploy": "npm run gas:deploy"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.21.0",
+    "@google/clasp": "^2.4.2",
+    "@playwright/test": "^1.50.1",
+    "@types/node": "^22.13.10",
+    "chokidar-cli": "^3.0.0",
+    "eslint": "^9.21.0",
+    "playwright": "^1.50.1",
+    "prettier": "^3.5.3",
+    "tsx": "^4.21.0",
+    "turbo": "^2.4.2",
+    "typescript": "^5.8.2",
+    "typescript-eslint": "^8.25.0",
+    "vitest": "^2.1.8"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@powerlifting/config",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.cjs",
+    "./prettier/base": "./prettier/base.cjs",
+    "./tsconfig/base": "./tsconfig/base.json",
+    "./vitest/base": "./vitest/base.ts",
+    "./playwright/base": "./playwright/base.ts"
+  },
+  "scripts": {
+    "build": "echo 'config package: no build output'",
+    "typecheck": "echo 'config package: no typecheck step'",
+    "lint": "echo 'config package: no lint step'",
+    "test": "echo 'config package: no tests'"
+  }
+}

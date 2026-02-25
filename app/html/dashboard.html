@@ -1,0 +1,136 @@
+<div class="app-container">
+    <header class="app-header">
+        <div class="header-left">
+            <h1 class="logo-text">Powerlifting App</h1>
+        </div>
+        <div class="header-center" id="headerInfo">
+            <div class="athlete-info skeleton">Loading athlete info...</div>
+        </div>
+        <div class="header-right">
+            <select id="blockSelect" class="block-select" aria-label="Select Block" onchange="loadStats()">
+                <option value="">Loading blocks...</option>
+            </select>
+            <button class="icon-btn" onclick="loadStats(true)" title="Force Refresh">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
+                    <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.8-4.3M22 12.5a10 10 0 0 1-18.8 4.3" />
+                </svg>
+            </button>
+            <button class="icon-btn" title="Settings">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="3"></circle>
+                    <path
+                        d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <main class="grid-layout" id="dashboardContent" style="display:none;">
+        <div class="col-left">
+            <div class="cards" id="statsCards">
+                <!-- Cards injected here -->
+            </div>
+            <div class="recap-panel">
+                <h2 class="h2">Block RECAP</h2>
+                <div class="divider"></div>
+                <div class="recap-content" id="recapGrid">
+                    <!-- Recap injected here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="col-middle">
+            <div class="chart-panel">
+                <h2 class="h2">Projected vs Current</h2>
+                <div class="chart-container">
+                    <canvas id="scoresChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <h2 class="h2">Block-by-Block Primary Progress</h2>
+                <div class="chart-container">
+                    <canvas id="growthChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-right">
+            <div class="table-panel">
+                <div class="table-header-actions">
+                    <h2 class="h2">Raw Data</h2>
+                    <button id="saveBtn" class="btn-primary" style="display:none;" onclick="saveChanges()">
+                        <span class="btn-text">Save All</span>
+                        <div class="spinner" style="display:none;"></div>
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <table id="rawDataTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th class="pinned-col">Day / Week</th>
+                                <th>Exercise</th>
+                                <th>Sets</th>
+                                <th>Reps</th>
+                                <th>Target Load</th>
+                                <th>Actual Load (Kg)</th>
+                                <th>RPE</th>
+                                <th>E1RM</th>
+                                <th>Notes</th>
+                                <th class="action-col"></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Injected rows -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Initial loading state -->
+    <div id="loadingSkeletons" class="grid-layout loading-state">
+        <div class="col-left">
+            <div class="card skeleton" style="height: 120px;"></div>
+            <div class="card skeleton" style="height: 120px;"></div>
+            <div class="recap-panel skeleton" style="height: 200px;"></div>
+        </div>
+        <div class="col-middle">
+            <div class="chart-panel skeleton" style="height: 300px;"></div>
+        </div>
+        <div class="col-right">
+            <div class="table-panel skeleton" style="height: 400px;"></div>
+        </div>
+    </div>
+</div>
+
+<div class="toast-container" id="toastContainer" aria-live="polite"></div>
+
+<!-- Conflict Modal -->
+<div class="modal-backdrop" id="conflictModal" role="dialog" aria-labelledby="conflictTitle" style="display:none;">
+    <div class="modal">
+        <h2 id="conflictTitle" class="modal-title">Conflict detected</h2>
+        <p class="modal-body">The sheet changed since you loaded it. Choose action:</p>
+        <div class="modal-table-wrap">
+            <table class="conflict-table">
+                <thead>
+                    <tr>
+                        <th>Cell</th>
+                        <th>Your value</th>
+                        <th>Current value</th>
+                    </tr>
+                </thead>
+                <tbody id="conflictTableBody"></tbody>
+            </table>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-secondary" onclick="closeConflictModal()">Cancel</button>
+            <button class="btn-primary" onclick="resolveConflict('sheet')">Use sheet value</button>
+            <button class="btn-danger" id="forceOverwriteBtn" onclick="resolveConflict('overwrite')">Overwrite
+                (force)</button>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,28 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model UserSpreadsheetSelection {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  spreadsheetId  String
+  spreadsheetUrl String?
+  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @default(now())
+}
+
+model OAuthTokenVault {
+  id               String   @id @default(cuid())
+  userId           String
+  provider         String
+  encryptedPayload String
+  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @default(now())
+
+  @@unique([userId, provider])
+}

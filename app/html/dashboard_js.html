@@ -1,0 +1,907 @@
+<script>
+let currentBlockData = null;
+let pendingChanges = {};
+let charts = {};
+let saveDebounceTimer = null;
+let conflictContext = null;
+
+const THEME = {
+  bg900: "#080b12",
+  bg800: "#111823",
+  bg700: "#1c2533",
+  bg600: "#222c3c",
+  muted: "#6f7c93",
+  textSecondary: "#aab4c6",
+  squat: "#77859f",
+  bench: "#8696b2",
+  dead: "#95a6c3",
+  primary: "#8ea3c3",
+  white: "#e3e9f3"
+};
+
+window.onerror = function (msg, url, lineNo, columnNo, error) {
+  const message = [
+    "Message: " + msg,
+    "URL: " + url,
+    "Line: " + lineNo,
+    "Column: " + columnNo,
+    "Error object: " + JSON.stringify(error)
+  ].join(" - ");
+  console.error(message);
+  if (typeof showToast === "function") {
+    showToast("JS Error: " + msg, "error", 10000);
+  }
+  return false;
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  Chart.defaults.color = THEME.muted;
+  Chart.defaults.font.family = '"Inter", system-ui, sans-serif';
+  Chart.defaults.plugins.tooltip.backgroundColor = THEME.bg800;
+  Chart.defaults.plugins.tooltip.titleColor = THEME.white;
+  Chart.defaults.plugins.tooltip.bodyColor = THEME.textSecondary;
+  Chart.defaults.plugins.tooltip.borderColor = "rgba(168,188,219,0.28)";
+  Chart.defaults.plugins.tooltip.borderWidth = 1;
+
+  fetchInitialPayload();
+});
+
+function showToast(msg, type, duration) {
+  if (!type) type = "info";
+  if (!duration) duration = 4000;
+  const container = document.getElementById("toastContainer");
+  if (!container) return;
+
+  const toast = document.createElement("div");
+  toast.className = "toast " + type;
+  toast.innerHTML =
+    '<span>' +
+    msg +
+    '</span><button class="icon-btn" onclick="this.parentElement.remove()" style="padding:0">' +
+    '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+    '<path d="M18 6L6 18M6 6l12 12" /></svg></button>';
+  container.appendChild(toast);
+
+  setTimeout(function () {
+    if (document.body.contains(toast)) {
+      toast.style.opacity = "0";
+      toast.style.transform = "translateX(-100%)";
+      setTimeout(function () {
+        toast.remove();
+      }, 300);
+    }
+  }, duration);
+}
+
+function applyBlockOptions(blocks) {
+  const sel = document.getElementById("blockSelect");
+  if (!sel) return false;
+
+  if (!blocks || blocks.length === 0) {
+    sel.innerHTML = '<option value="">No blocks found</option>';
+    return false;
+  }
+
+  sel.innerHTML = blocks
+    .map(function (b) {
+      return '<option value="' + b.name + '">' + b.name + "</option>";
+    })
+    .join("");
+
+  const preferred = blocks.find(function (b) {
+    return b && b.isBlock;
+  }) || blocks[0];
+
+  if (preferred && preferred.name) {
+    sel.value = preferred.name;
+  }
+  return true;
+}
+
+/**
+ * Single round-trip to get blocks + basics + config.
+ */
+function fetchInitialPayload() {
+  google.script.run
+    .withSuccessHandler(function (payload) {
+      const blocks = payload ? payload.blocks : [];
+      const hasSelection = applyBlockOptions(blocks);
+      if (hasSelection) loadStats();
+    })
+    .withFailureHandler(function (err) {
+      showToast("Error loading initial data: " + err.message, "error");
+      fetchBlocks();
+    })
+    .apiGetInitialPayload();
+}
+
+/** Fallback for error recovery */
+function fetchBlocks() {
+  google.script.run
+    .withSuccessHandler(function (blocks) {
+      const hasSelection = applyBlockOptions(blocks);
+      if (hasSelection) loadStats();
+    })
+    .withFailureHandler(function (err) {
+      showToast("Error loading blocks: " + err.message, "error");
+    })
+    .apiGetAvailableBlocks();
+}
+
+function loadStats(force) {
+  if (force === undefined) force = false;
+  const sel = document.getElementById("blockSelect");
+  if (!sel) return;
+  const blockName = sel.value;
+  if (!blockName) return;
+
+  const content = document.getElementById("dashboardContent");
+  const skeletons = document.getElementById("loadingSkeletons");
+  const saveBtn = document.getElementById("saveBtn");
+
+  if (content) content.style.display = "none";
+  if (skeletons) skeletons.style.display = "grid";
+  if (saveBtn) saveBtn.style.display = "none";
+  pendingChanges = {};
+
+  google.script.run
+    .withSuccessHandler(function (data) {
+      const rows = data && data.blockData ? data.blockData.rows : [];
+      const isRecap = /recap/i.test(blockName);
+
+      if (!isRecap && (!rows || rows.length === 0)) {
+        if (!force) {
+          showToast(
+            "No rows found from cache. Auto-refreshing from live sheet...",
+            "warning",
+            4500
+          );
+          loadStats(true);
+          return;
+        }
+        showToast(
+          "No rows found after live refresh. Check this block's headers/data in the sheet.",
+          "error",
+          7000
+        );
+      }
+
+      currentBlockData = data;
+      renderDashboard(data);
+    })
+    .withFailureHandler(function (err) {
+      if (skeletons) skeletons.style.display = "none";
+      showToast("Error: " + err.message, "error");
+    })
+    .apiLoadDashboardData(blockName, force);
+}
+
+function animateValue(obj, start, end, duration) {
+  let startTimestamp = null;
+  const step = function (timestamp) {
+    if (!startTimestamp) startTimestamp = timestamp;
+    const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+    const current = start + progress * (end - start);
+    obj.innerHTML = current % 1 !== 0 ? current.toFixed(1) : Math.floor(current);
+    if (progress < 1) {
+      window.requestAnimationFrame(step);
+    }
+  };
+  window.requestAnimationFrame(step);
+}
+
+function getDeltaHtml(delta, pct) {
+  const isPositive = delta > 0;
+  const sign = isPositive ? "+" : "";
+  const valClass = isPositive ? "positive" : delta < 0 ? "negative" : "";
+  if (delta === 0) return '<div class="delta">0kg</div>';
+  return (
+    '<div class="delta ' +
+    valClass +
+    '">' +
+    sign +
+    delta.toFixed(1) +
+    "kg (" +
+    sign +
+    pct.toFixed(1) +
+    "%)</div>"
+  );
+}
+
+function displayValue(value) {
+  return value === null || value === undefined || value === "" ? "-" : value;
+}
+
+function formatSignedKg(value) {
+  if (value === null || value === undefined || isNaN(value)) return "n/a";
+  const sign = value > 0 ? "+" : "";
+  return sign + value.toFixed(1) + "kg";
+}
+
+function parsePositiveInt(value) {
+  const n = parseInt(value, 10);
+  return isNaN(n) || n <= 0 ? null : n;
+}
+
+function buildWeekTemplate(rows, parserReport) {
+  const byIndex = {};
+  const report = parserReport || {};
+  const daySummaries = report.daySummaries || [];
+
+  for (let i = 0; i < daySummaries.length; i++) {
+    const weekSummaries = daySummaries[i].weekSummaries || [];
+    for (let j = 0; j < weekSummaries.length; j++) {
+      const idx = parsePositiveInt(weekSummaries[j].weekIndex);
+      if (!idx) continue;
+      if (!byIndex[idx]) {
+        byIndex[idx] = weekSummaries[j].weekLabel || "Week " + idx;
+      }
+    }
+  }
+
+  for (let i = 0; i < rows.length; i++) {
+    const idx = parsePositiveInt(rows[i].weekIndex);
+    if (!idx) continue;
+    if (!byIndex[idx]) {
+      byIndex[idx] = rows[i].weekLabel || "Week " + idx;
+    }
+  }
+
+  let planned = parsePositiveInt(report.plannedWeekCount) || 0;
+  if (!planned) {
+    const known = Object.keys(byIndex).map(function (k) {
+      return parseInt(k, 10);
+    });
+    planned = known.length ? Math.max.apply(null, known) : 0;
+  }
+  if (!planned && rows.length > 0) planned = 1;
+
+  const template = [];
+  for (let i = 1; i <= planned; i++) {
+    template.push({
+      weekIndex: i,
+      weekLabel: byIndex[i] || "Week " + i
+    });
+  }
+  return template;
+}
+
+function groupRowsByDayWeek(rows, parserReport) {
+  const dayMap = {};
+  const dayGroups = [];
+  const weekTemplate = buildWeekTemplate(rows, parserReport);
+
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const dayIndex = parsePositiveInt(row.dayIndex) || 1;
+    const dayLabel = row.dayLabel || "Day " + dayIndex;
+    const daySectionId = row.daySectionId || "day" + dayIndex;
+    const dayName = row.dayName || "";
+    const dayRowIndex = parsePositiveInt(row.dayRowIndex) || null;
+    const dayKey = daySectionId + "|" + dayLabel;
+
+    if (!dayMap[dayKey]) {
+      dayMap[dayKey] = {
+        daySectionId: daySectionId,
+        dayIndex: dayIndex,
+        dayLabel: dayLabel,
+        dayName: dayName,
+        dayRowIndex: dayRowIndex,
+        weekMap: {}
+      };
+      dayGroups.push(dayMap[dayKey]);
+    }
+
+    const weekIndex = parsePositiveInt(row.weekIndex) || 1;
+    const weekLabel = row.weekLabel || "Week " + weekIndex;
+    const weekSectionId = row.weekSectionId || daySectionId + "-week" + weekIndex;
+    const weekKey = weekSectionId + "|" + weekIndex;
+    if (!dayMap[dayKey].weekMap[weekKey]) {
+      dayMap[dayKey].weekMap[weekKey] = {
+        weekIndex: weekIndex,
+        weekLabel: weekLabel,
+        weekSectionId: weekSectionId,
+        rows: []
+      };
+    }
+    dayMap[dayKey].weekMap[weekKey].rows.push(row);
+  }
+
+  dayGroups.sort(function (a, b) {
+    if (a.dayIndex !== b.dayIndex) return a.dayIndex - b.dayIndex;
+    if (a.dayRowIndex && b.dayRowIndex) return a.dayRowIndex - b.dayRowIndex;
+    return a.daySectionId.localeCompare(b.daySectionId);
+  });
+
+  const normalizedDayGroups = [];
+  for (let i = 0; i < dayGroups.length; i++) {
+    const day = dayGroups[i];
+    const weekGroups = [];
+
+    for (let j = 0; j < weekTemplate.length; j++) {
+      const templateWeek = weekTemplate[j];
+      let found = null;
+      for (const key in day.weekMap) {
+        const candidate = day.weekMap[key];
+        if (candidate.weekIndex === templateWeek.weekIndex) {
+          found = candidate;
+          break;
+        }
+      }
+
+      if (!found) {
+        weekGroups.push({
+          weekIndex: templateWeek.weekIndex,
+          weekLabel: templateWeek.weekLabel,
+          weekSectionId: day.daySectionId + "-week" + templateWeek.weekIndex,
+          rows: []
+        });
+      } else {
+        found.rows.sort(function (a, b) {
+          const ra = parseInt(a.rowIndex, 10) || 999999;
+          const rb = parseInt(b.rowIndex, 10) || 999999;
+          if (ra !== rb) return ra - rb;
+          return String(a.exercise || "").localeCompare(String(b.exercise || ""));
+        });
+        if (!found.weekLabel) found.weekLabel = templateWeek.weekLabel;
+        weekGroups.push(found);
+      }
+    }
+
+    normalizedDayGroups.push({
+      daySectionId: day.daySectionId,
+      dayIndex: day.dayIndex,
+      dayLabel: day.dayLabel,
+      dayName: day.dayName,
+      weekGroups: weekGroups
+    });
+  }
+
+  return {
+    dayGroups: normalizedDayGroups,
+    weekTemplate: weekTemplate
+  };
+}
+
+function renderDashboard(data) {
+  const skeletons = document.getElementById("loadingSkeletons");
+  const content = document.getElementById("dashboardContent");
+  if (skeletons) skeletons.style.display = "none";
+  if (content) content.style.display = "grid";
+
+  // Header
+  const b = data.basics || {};
+  const athleteInfo = document.querySelector(".athlete-info");
+  if (athleteInfo) {
+    athleteInfo.classList.remove("skeleton");
+    athleteInfo.innerHTML =
+      "<strong>" +
+      displayValue(b.sex) +
+      " | " +
+      displayValue(b.bodyweight) +
+      "kg class</strong><br>" +
+      '<span style="font-size:12px">Updated: ' +
+      new Date().toLocaleTimeString() +
+      "</span>";
+  }
+
+  // Cards
+  const cards = document.getElementById("statsCards");
+  if (cards && data.stats) {
+    const s = data.stats;
+    const g = s.growth || {};
+    cards.innerHTML =
+      '<div class="card" style="border-top: 3px solid var(--accent-primary)">' +
+      '<h3 class="card-title">Projected / Current Total</h3>' +
+      '<div class="metric"><span class="anim-val">' +
+      Math.floor(s.projected.total) +
+      "</span> kg " +
+      getDeltaHtml(g.total.delta, g.total.deltaPct) +
+      '</div><div class="p" style="margin-top:4px">Current: ' +
+      Math.floor(s.current.total) +
+      " kg</div></div>" +
+      '<div class="card" style="border-top: 3px solid var(--accent-squat)">' +
+      '<h3 class="card-title">Squat</h3><div class="metric"><span class="anim-val">' +
+      Math.floor(g.squat.projected) +
+      "</span> kg " +
+      getDeltaHtml(g.squat.delta, g.squat.deltaPct) +
+      "</div></div>" +
+      '<div class="card" style="border-top: 3px solid var(--accent-bench)">' +
+      '<h3 class="card-title">Bench</h3><div class="metric"><span class="anim-val">' +
+      Math.floor(g.bench.projected) +
+      "</span> kg " +
+      getDeltaHtml(g.bench.delta, g.bench.deltaPct) +
+      "</div></div>" +
+      '<div class="card" style="border-top: 3px solid var(--accent-dead)">' +
+      '<h3 class="card-title">Deadlift</h3><div class="metric"><span class="anim-val">' +
+      Math.floor(g.deadlift.projected) +
+      "</span> kg " +
+      getDeltaHtml(g.deadlift.delta, g.deadlift.deltaPct) +
+      "</div></div>";
+
+    document.querySelectorAll(".anim-val").forEach(function (el) {
+      const endVal = parseFloat(el.innerText);
+      animateValue(el, endVal * 0.5, endVal, 800);
+    });
+  }
+
+  // Recap
+  const r = (data.blockData && data.blockData.recaps) || {};
+  const recapGrid = document.getElementById("recapGrid");
+  if (recapGrid) {
+    recapGrid.innerHTML =
+      '<div class="recap-row"><span class="recap-label">Squat Focus</span><span class="recap-value">' +
+      displayValue(r.squat) +
+      '</span></div><div class="recap-row"><span class="recap-label">Bench Focus</span><span class="recap-value">' +
+      displayValue(r.bench) +
+      '</span></div><div class="recap-row"><span class="recap-label">Deadlift Focus</span><span class="recap-value">' +
+      displayValue(r.deadlift) +
+      '</span></div><div class="recap-row"><span class="recap-label">Accessories</span><span class="recap-value">' +
+      displayValue(r.accessory) +
+      '</span></div><div class="divider"></div><div class="recap-row" style="flex-direction:column; gap:4px"><span class="recap-label">Coach Notes</span><span class="p">' +
+      displayValue(r.coach) +
+      "</span></div>";
+  }
+
+  // Table
+  const tbody = document.querySelector("#rawDataTable tbody");
+  if (tbody) {
+    const rows = (data.blockData && data.blockData.rows) || [];
+    const grouped = groupRowsByDayWeek(rows, (data.blockData && data.blockData.parserReport) || {});
+    let renderRowIndex = 0;
+
+    const renderEditable = function (val, cellA1, field, idx) {
+      if (!cellA1) {
+        return (
+          '<span style="color:var(--muted)">' +
+          displayValue(val) +
+          ' <svg class="readonly-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+          '<rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>' +
+          '<path d="M7 11V7a5 5 0 0110 0v4"></path></svg></span>'
+        );
+      }
+
+      return (
+        '<div class="editable-cell-wrapper" data-cell="' +
+        cellA1 +
+        '" data-field="' +
+        field +
+        '">' +
+        '<div class="dirty-dot"></div><input class="editable-input" type="text" value="' +
+        (val !== null && val !== undefined ? val : "") +
+        '" data-orig="' +
+        (val !== null && val !== undefined ? val : "") +
+        '" data-idx="' +
+        idx +
+        '" oninput="handleInput(this)" onkeydown="handleKeydown(event, this)">' +
+        '<button class="quick-save-btn" onclick="saveSingle(\'' +
+        cellA1 +
+        '\')" title="Save row">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+        '<polyline points="20 6 9 17 4 12"></polyline></svg></button></div>'
+      );
+    };
+
+    if (!grouped.dayGroups.length) {
+      tbody.innerHTML = "";
+    } else {
+      const htmlParts = [];
+      for (let d = 0; d < grouped.dayGroups.length; d++) {
+        const dayGroup = grouped.dayGroups[d];
+        const dayTitle = dayGroup.dayName
+          ? dayGroup.dayLabel + " (" + dayGroup.dayName + ")"
+          : dayGroup.dayLabel;
+        htmlParts.push(
+          '<tr class="group-row day-group-row"><td class="pinned-col" colspan="10">' +
+            displayValue(dayTitle) +
+            "</td></tr>"
+        );
+
+        for (let w = 0; w < dayGroup.weekGroups.length; w++) {
+          const weekGroup = dayGroup.weekGroups[w];
+          htmlParts.push(
+            '<tr class="group-row week-group-row"><td class="pinned-col" colspan="10">' +
+              displayValue(weekGroup.weekLabel) +
+              "</td></tr>"
+          );
+
+          if (!weekGroup.rows.length) {
+            htmlParts.push(
+              '<tr class="week-empty-row"><td class="pinned-col week-pill">' +
+                displayValue(weekGroup.weekLabel) +
+                '</td><td colspan="9"><span class="p">No entries for this week</span></td></tr>'
+            );
+            continue;
+          }
+
+          for (let i = 0; i < weekGroup.rows.length; i++) {
+            const row = weekGroup.rows[i];
+            const rowId = renderRowIndex++;
+            const e1rmValue = parseFloat(row.e1rm);
+            htmlParts.push(
+              "<tr>" +
+                '<td class="pinned-col week-pill">' +
+                displayValue(weekGroup.weekLabel) +
+                '</td><td style="text-transform: capitalize; font-weight:500;">' +
+                displayValue(row.exercise) +
+                "</td><td>" +
+                displayValue(row.sets) +
+                "</td><td>" +
+                displayValue(row.reps) +
+                "</td><td>" +
+                displayValue(row.targetLoadKg) +
+                "</td><td>" +
+                renderEditable(row.actualLoadKg, row.actualLoadCell, "actualLoad", rowId) +
+                "</td><td>" +
+                renderEditable(row.rpe, row.rpeCell, "rpe", rowId) +
+                "</td><td>" +
+                (isNaN(e1rmValue) ? "-" : e1rmValue.toFixed(1)) +
+                '</td><td><span class="p" style="font-size:12px">' +
+                displayValue(row.notes || "") +
+                '</span></td><td class="action-col"></td></tr>'
+            );
+          }
+        }
+      }
+      tbody.innerHTML = htmlParts.join("");
+    }
+  }
+
+  if (data.stats) renderCharts(data.stats, data.overallProgress);
+}
+
+function renderCharts(stats, overallProgress) {
+  if (charts.growth) charts.growth.destroy();
+  if (charts.scores) charts.scores.destroy();
+
+  const canvasScores = document.getElementById("scoresChart");
+  if (canvasScores) {
+    const ctxScores = canvasScores.getContext("2d");
+    const gradProjected = ctxScores.createLinearGradient(0, 0, 0, 400);
+    gradProjected.addColorStop(0, THEME.primary);
+    gradProjected.addColorStop(1, "rgba(142, 163, 195, 0.26)");
+
+    charts.scores = new Chart(ctxScores, {
+      type: "bar",
+      data: {
+        labels: ["DOTS", "Wilks", "GL"],
+        datasets: [
+          {
+            label: "Current",
+            data: [stats.current.dots, stats.current.wilks, stats.current.gl],
+            backgroundColor: THEME.bg600,
+            borderColor: "rgba(168, 188, 219, 0.24)",
+            borderWidth: 1,
+            borderRadius: 4
+          },
+          {
+            label: "Projected",
+            data: [stats.projected.dots, stats.projected.wilks, stats.projected.gl],
+            backgroundColor: gradProjected,
+            borderColor: "rgba(168, 188, 219, 0.3)",
+            borderWidth: 1,
+            borderRadius: 4
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            position: "top",
+            labels: { usePointStyle: true, boxWidth: 8, color: THEME.textSecondary }
+          }
+        },
+        scales: {
+          y: {
+            grid: { color: "rgba(168,188,219,0.16)" },
+            ticks: { color: THEME.muted }
+          },
+          x: {
+            grid: { display: false },
+            ticks: { color: THEME.muted }
+          }
+        }
+      }
+    });
+  }
+
+  const canvasGrowth = document.getElementById("growthChart");
+  if (canvasGrowth) {
+    const ctxGrowth = canvasGrowth.getContext("2d");
+    const timeline = overallProgress && overallProgress.timeline ? overallProgress.timeline : [];
+    if (timeline.length > 0) {
+      const summary = overallProgress.summary || {};
+      const subtitleText =
+        "Δ S: " +
+        formatSignedKg(summary.squat && summary.squat.delta) +
+        " | Δ B: " +
+        formatSignedKg(summary.bench && summary.bench.delta) +
+        " | Δ D: " +
+        formatSignedKg(summary.deadlift && summary.deadlift.delta);
+
+      charts.growth = new Chart(ctxGrowth, {
+        type: "line",
+        data: {
+          labels: timeline.map(function (point) {
+            return point.label;
+          }),
+          datasets: [
+            {
+              label: "Squat",
+              liftKey: "squat",
+              data: timeline.map(function (point) {
+                return point.squat ? point.squat.loadKg : null;
+              }),
+              borderColor: THEME.squat,
+              backgroundColor: "rgba(255, 184, 107, 0.15)",
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.2,
+              spanGaps: true
+            },
+            {
+              label: "Bench",
+              liftKey: "bench",
+              data: timeline.map(function (point) {
+                return point.bench ? point.bench.loadKg : null;
+              }),
+              borderColor: THEME.bench,
+              backgroundColor: "rgba(255, 107, 149, 0.15)",
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.2,
+              spanGaps: true
+            },
+            {
+              label: "Deadlift",
+              liftKey: "deadlift",
+              data: timeline.map(function (point) {
+                return point.deadlift ? point.deadlift.loadKg : null;
+              }),
+              borderColor: THEME.dead,
+              backgroundColor: "rgba(110, 231, 255, 0.15)",
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              tension: 0.2,
+              spanGaps: true
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: "index", intersect: false },
+          plugins: {
+            legend: {
+              position: "top",
+              labels: { usePointStyle: true, boxWidth: 8, color: THEME.textSecondary }
+            },
+            subtitle: {
+              display: true,
+              text: subtitleText,
+              color: THEME.textSecondary
+            },
+            tooltip: {
+              callbacks: {
+                title: function (items) {
+                  if (!items || !items.length) return "";
+                  const point = timeline[items[0].dataIndex];
+                  return point.blockName + " • Week " + point.weekIndex;
+                },
+                afterLabel: function (context) {
+                  const point = timeline[context.dataIndex];
+                  const liftKey = context.dataset.liftKey;
+                  const detail = point && point[liftKey];
+                  if (!detail) return "No primary day data";
+                  const dayLabel =
+                    detail.dayLabel || (detail.dayIndex ? "Day " + detail.dayIndex : "Day ?");
+                  return "Primary day: " + dayLabel;
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              grid: { color: "rgba(168,188,219,0.16)" },
+              ticks: { color: THEME.muted }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: THEME.muted, maxRotation: 40, minRotation: 40 }
+            }
+          }
+        }
+      });
+    } else {
+      charts.growth = new Chart(ctxGrowth, {
+        type: "bar",
+        data: {
+          labels: ["Squat", "Bench", "Deadlift"],
+          datasets: [
+            {
+              label: "Baseline",
+              data: [stats.growth.squat.baseline, stats.growth.bench.baseline, stats.growth.deadlift.baseline],
+              backgroundColor: THEME.bg600,
+              borderColor: "rgba(168, 188, 219, 0.24)",
+              borderWidth: 1,
+              borderRadius: 4
+            },
+            {
+              label: "Projected",
+              data: [stats.growth.squat.projected, stats.growth.bench.projected, stats.growth.deadlift.projected],
+              backgroundColor: [THEME.squat, THEME.bench, THEME.dead],
+              borderColor: "rgba(168, 188, 219, 0.3)",
+              borderWidth: 1,
+              borderRadius: 4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false }
+          },
+          scales: {
+            y: {
+              grid: { color: "rgba(168,188,219,0.16)" },
+              ticks: { color: THEME.muted }
+            },
+            x: {
+              grid: { display: false },
+              ticks: { color: THEME.muted }
+            }
+          }
+        }
+      });
+    }
+  }
+}
+
+function handleInput(input) {
+  const val = input.value.trim();
+  const orig = input.dataset.orig.trim();
+  const wrapper = input.closest(".editable-cell-wrapper");
+
+  if (val !== orig) {
+    wrapper.classList.add("dirty");
+    const cellA1 = wrapper.dataset.cell;
+    pendingChanges[cellA1] = {
+      cellA1: cellA1,
+      newValue: val,
+      originalValue: orig,
+      field: wrapper.dataset.field
+    };
+  } else {
+    wrapper.classList.remove("dirty");
+    delete pendingChanges[wrapper.dataset.cell];
+  }
+
+  const hasChanges = Object.keys(pendingChanges).length > 0;
+  const saveBtn = document.getElementById("saveBtn");
+  if (saveBtn) saveBtn.style.display = hasChanges ? "flex" : "none";
+}
+
+function handleKeydown(e, input) {
+  if (e.key === "Enter") {
+    e.preventDefault();
+    input.blur();
+    const wrapper = input.closest(".editable-cell-wrapper");
+    saveSingle(wrapper.dataset.cell);
+  } else if (e.key === "Escape") {
+    input.value = input.dataset.orig;
+    handleInput(input);
+    input.blur();
+  }
+}
+
+function saveSingle(cellA1) {
+  if (!pendingChanges[cellA1]) return;
+  executeSave([pendingChanges[cellA1]], false);
+}
+
+function saveChanges() {
+  const updates = Object.values(pendingChanges);
+  if (updates.length === 0) return;
+  executeSave(updates, false);
+}
+
+function executeSave(updates, forceOverwrite) {
+  const btn = document.getElementById("saveBtn");
+  const sel = document.getElementById("blockSelect");
+  if (!sel) return;
+  const blockName = sel.value;
+
+  showToast("Saving " + updates.length + " change(s)...", "info", 2000);
+  if (btn && updates.length === Object.keys(pendingChanges).length) {
+    const spinner = btn.querySelector(".spinner");
+    const btnText = btn.querySelector(".btn-text");
+    if (spinner) spinner.style.display = "inline-block";
+    if (btnText) btnText.innerText = "Saving...";
+    btn.disabled = true;
+  }
+
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (btn) {
+        const spinner = btn.querySelector(".spinner");
+        const btnText = btn.querySelector(".btn-text");
+        if (spinner) spinner.style.display = "none";
+        if (btnText) btnText.innerText = "Save All";
+        btn.disabled = false;
+      }
+
+      if (res.status === "ok") {
+        updates.forEach(function (u) {
+          delete pendingChanges[u.cellA1];
+        });
+        if (btn) btn.style.display = Object.keys(pendingChanges).length ? "flex" : "none";
+        loadStats(true);
+        showToast("Changes saved successfully!", "success");
+      } else if (res.status === "conflict") {
+        showConflictModal(res.conflicts, updates);
+      }
+    })
+    .withFailureHandler(function (err) {
+      if (btn) {
+        const spinner = btn.querySelector(".spinner");
+        const btnText = btn.querySelector(".btn-text");
+        if (spinner) spinner.style.display = "none";
+        if (btnText) btnText.innerText = "Save All";
+        btn.disabled = false;
+      }
+      showToast("Error saving: " + err.message, "error");
+    })
+    .updateBlockCells(blockName, updates, forceOverwrite);
+}
+
+function showConflictModal(conflicts, originalUpdates) {
+  conflictContext = { originalUpdates: originalUpdates };
+  const tbody = document.getElementById("conflictTableBody");
+  if (!tbody) return;
+
+  const updateMap = {};
+  originalUpdates.forEach(function (update) {
+    updateMap[update.cellA1] = update.newValue;
+  });
+
+  tbody.innerHTML = conflicts
+    .map(function (c) {
+      const clientValue = updateMap[c.cellA1];
+      const fallbackValue = c.requestedOriginal;
+      return (
+        "<tr><td><strong>" +
+        c.cellA1 +
+        "</strong></td><td><span class=\"delta negative\">" +
+        displayValue(clientValue !== undefined ? clientValue : fallbackValue) +
+        "</span></td><td><span class=\"delta positive\">" +
+        displayValue(c.serverValue) +
+        "</span></td></tr>"
+      );
+    })
+    .join("");
+
+  const modal = document.getElementById("conflictModal");
+  if (modal) modal.style.display = "flex";
+}
+
+function closeConflictModal() {
+  const modal = document.getElementById("conflictModal");
+  if (modal) modal.style.display = "none";
+  conflictContext = null;
+}
+
+function resolveConflict(action) {
+  if (action === "overwrite") {
+    executeSave(conflictContext.originalUpdates, true);
+  } else {
+    loadStats(true);
+  }
+  closeConflictModal();
+}
+</script>

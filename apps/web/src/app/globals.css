@@ -1,0 +1,26 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7fa;
+  --surface: #ffffff;
+  --text: #111827;
+  --muted: #5b6470;
+  --border: #d0d7de;
+  --accent: #0f766e;
+  --danger: #b42318;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "IBM Plex Sans", "Avenir Next", "Segoe UI", sans-serif;
+  color: var(--text);
+  background: radial-gradient(circle at 0% 0%, #edf6ff 0%, transparent 55%),
+    radial-gradient(circle at 100% 0%, #ecfdf5 0%, transparent 50%), var(--bg);
+}
+
+a {
+  color: inherit;
+}
