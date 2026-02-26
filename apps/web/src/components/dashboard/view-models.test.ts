@@ -161,6 +161,21 @@ describe('buildWeekDaySections', () => {
     expect(sections[0].days[0].rows[0].rowIndex).toBe(10);
     expect(sections[1].weekIndex).toBe(2);
   });
+
+  it('keeps unassigned week/day rows stable and grouped', () => {
+    const rows = [
+      makeRow({ rowIndex: 40, weekIndex: null, dayIndex: null, weekLabel: '', dayLabel: '', exercise: 'Cable Row' }),
+      makeRow({ rowIndex: 41, weekIndex: null, dayIndex: null, weekLabel: '', dayLabel: '', exercise: 'DB Press' }),
+      makeRow({ rowIndex: 10, weekIndex: 1, dayIndex: 1, exercise: 'Squat' }),
+    ];
+
+    const sections = buildWeekDaySections(rows);
+
+    expect(sections).toHaveLength(2);
+    expect(sections[1].label).toBe('Unassigned Week');
+    expect(sections[1].days[0].label).toBe('Unassigned Day');
+    expect(sections[1].days[0].rows.map((row) => row.exercise)).toEqual(['Cable Row', 'DB Press']);
+  });
 });
 
 describe('inferCurrentPosition', () => {

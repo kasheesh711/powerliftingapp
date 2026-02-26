@@ -53,7 +53,7 @@ export function BlockComparisonChart({ comparisons }: { comparisons: BlockCompar
       </div>
 
       <div className={styles.chartWrap}>
-        <ResponsiveContainer width="100%" height={276}>
+        <ResponsiveContainer width="100%" height={208}>
           <BarChart data={comparisons} margin={{ top: 8, right: 18, left: 2, bottom: 8 }}>
             <CartesianGrid stroke="var(--border-default)" strokeDasharray="3 5" vertical={false} />
             <XAxis

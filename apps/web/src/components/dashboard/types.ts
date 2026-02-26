@@ -2,6 +2,19 @@ import type { BlockRow, CellUpdateInput, DashboardPayload, InitialPayload, Updat
 
 export type EditableField = 'actualLoad' | 'rpe';
 
+export type DashboardPane = 'overview' | 'training' | 'analysis' | 'connection';
+
+export type AnalysisSlot = 'blockComparison' | 'meetProjection' | 'recap';
+
+export type DashboardViewportMode = 'desktop' | 'mobile';
+
+export interface DashboardUiState {
+  activePane: DashboardPane;
+  activeWeek: string;
+  activeDay: string;
+  activeAnalysisSlot: AnalysisSlot;
+}
+
 export interface SpreadsheetSelection {
   spreadsheetId: string;
   spreadsheetUrl?: string;
