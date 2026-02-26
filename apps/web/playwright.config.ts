@@ -11,6 +11,8 @@ export default defineConfig({
     env: {
       ...process.env,
       NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'test-secret',
+      GOOGLE_CLIENT_ID: '',
+      GOOGLE_CLIENT_SECRET: '',
       TOKEN_ENCRYPTION_KEY_BASE64:
         process.env.TOKEN_ENCRYPTION_KEY_BASE64 || 'MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI=',
       EXCEL_PROXY_PATH: process.env.EXCEL_PROXY_PATH || '../../Kev Ultimate Comeback.xlsx',

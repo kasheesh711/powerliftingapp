@@ -8,7 +8,9 @@ import styles from './charts.module.css';
 interface ProjectionPoint {
   label: string;
   current: number;
-  projected: number;
+  low: number;
+  base: number;
+  high: number;
 }
 
 function ProjectionTooltip({ active, payload }: TooltipProps<number, string>): JSX.Element | null {
@@ -29,8 +31,16 @@ function ProjectionTooltip({ active, payload }: TooltipProps<number, string>): J
         <span className={styles.tooltipValue}>{point.current.toFixed(1)} kg</span>
       </div>
       <div className={styles.tooltipRow}>
-        <span className={styles.tooltipName}>Projected</span>
-        <span className={styles.tooltipValue}>{point.projected.toFixed(1)} kg</span>
+        <span className={styles.tooltipName}>Low</span>
+        <span className={styles.tooltipValue}>{point.low.toFixed(1)} kg</span>
+      </div>
+      <div className={styles.tooltipRow}>
+        <span className={styles.tooltipName}>Base</span>
+        <span className={styles.tooltipValue}>{point.base.toFixed(1)} kg</span>
+      </div>
+      <div className={styles.tooltipRow}>
+        <span className={styles.tooltipName}>High</span>
+        <span className={styles.tooltipValue}>{point.high.toFixed(1)} kg</span>
       </div>
     </div>
   );
@@ -41,22 +51,30 @@ export function MeetProjectionChart({ projection }: { projection: MeetProjection
     {
       label: 'Squat',
       current: projection.current.squat,
-      projected: projection.projected.squat
+      low: projection.scenarios.low.squat,
+      base: projection.scenarios.base.squat,
+      high: projection.scenarios.high.squat
     },
     {
       label: 'Bench',
       current: projection.current.bench,
-      projected: projection.projected.bench
+      low: projection.scenarios.low.bench,
+      base: projection.scenarios.base.bench,
+      high: projection.scenarios.high.bench
     },
     {
       label: 'Deadlift',
       current: projection.current.deadlift,
-      projected: projection.projected.deadlift
+      low: projection.scenarios.low.deadlift,
+      base: projection.scenarios.base.deadlift,
+      high: projection.scenarios.high.deadlift
     },
     {
       label: 'Total',
       current: projection.current.total,
-      projected: projection.projected.total
+      low: projection.scenarios.low.total,
+      base: projection.scenarios.base.total,
+      high: projection.scenarios.high.total
     }
   ];
 
@@ -66,13 +84,15 @@ export function MeetProjectionChart({ projection }: { projection: MeetProjection
         <div>
           <h3 className={styles.chartTitle}>Meet Projection Runway</h3>
           <p className={styles.chartSubtitle}>
-            Current vs projected to {projection.meetDate} ({projection.weeksRemaining} weeks remaining).
+            {projection.meetDate} in {projection.weeksRemaining} weeks. Total scenario range{' '}
+            {projection.scenarios.low.total.toFixed(1)}-{projection.scenarios.high.total.toFixed(1)} kg (confidence{' '}
+            {projection.scenarios.confidenceScore.toFixed(0)}%).
           </p>
         </div>
       </div>
 
       <div className={styles.chartWrap}>
-        <ResponsiveContainer width="100%" height={208}>
+        <ResponsiveContainer width="100%" height={220}>
           <BarChart data={data} margin={{ top: 8, right: 18, left: 2, bottom: 8 }}>
             <CartesianGrid stroke="var(--border-default)" strokeDasharray="3 5" vertical={false} />
             <XAxis
@@ -95,8 +115,10 @@ export function MeetProjectionChart({ projection }: { projection: MeetProjection
               formatter={(value) => <span className={styles.legendText}>{String(value)}</span>}
               iconSize={9}
             />
-            <Bar dataKey="current" name="Current" fill="var(--surface-3)" radius={[6, 6, 0, 0]} />
-            <Bar dataKey="projected" name="Projected" fill="var(--accent-primary)" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="current" name="Current" fill="var(--surface-3)" radius={[5, 5, 0, 0]} />
+            <Bar dataKey="low" name="Low" fill="var(--danger)" radius={[5, 5, 0, 0]} />
+            <Bar dataKey="base" name="Base" fill="var(--accent-primary)" radius={[5, 5, 0, 0]} />
+            <Bar dataKey="high" name="High" fill="var(--lift-deadlift)" radius={[5, 5, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

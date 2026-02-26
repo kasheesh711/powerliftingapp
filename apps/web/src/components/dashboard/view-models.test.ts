@@ -58,7 +58,11 @@ function makeGrowthRates(overrides: Partial<GrowthRatesByLift>): GrowthRatesByLi
       label: 'Squat',
       current: 100,
       overallRate: 2,
+      robustLongRate: 2,
       recentRate: 3,
+      blockRate: 2.5,
+      baseRate: 2.6,
+      uncertaintyRate: 0.8,
       blendedRate: 2.6
     },
     bench: {
@@ -66,7 +70,11 @@ function makeGrowthRates(overrides: Partial<GrowthRatesByLift>): GrowthRatesByLi
       label: 'Bench',
       current: 80,
       overallRate: 1,
+      robustLongRate: 1,
       recentRate: 1.5,
+      blockRate: 1.2,
+      baseRate: 1.3,
+      uncertaintyRate: 0.6,
       blendedRate: 1.3
     },
     deadlift: {
@@ -74,7 +82,11 @@ function makeGrowthRates(overrides: Partial<GrowthRatesByLift>): GrowthRatesByLi
       label: 'Deadlift',
       current: 150,
       overallRate: 3,
+      robustLongRate: 3,
       recentRate: 4,
+      blockRate: 3.2,
+      baseRate: 3.6,
+      uncertaintyRate: 1,
       blendedRate: 3.6
     },
     ...overrides
@@ -198,6 +210,21 @@ describe('inferCurrentPosition', () => {
     });
     expect(result.completionPct).toBe(100);
   });
+
+  it('prioritizes primary-lift completion over accessory completion', () => {
+    const rows = [
+      makeRow({ rowIndex: 10, weekIndex: 1, dayIndex: 1, exercise: 'Squat', actualLoadKg: 140 }),
+      makeRow({ rowIndex: 11, weekIndex: 1, dayIndex: 1, exercise: 'Bench Press', actualLoadKg: 95 }),
+      makeRow({ rowIndex: 12, weekIndex: 1, dayIndex: 1, exercise: 'DB Row', actualLoadKg: 0 }),
+      makeRow({ rowIndex: 13, weekIndex: 1, dayIndex: 1, exercise: 'Triceps Pushdown', actualLoadKg: 0 })
+    ];
+
+    const result = inferCurrentPosition(rows, 0.8);
+
+    expect(result.weekIndex).toBe(1);
+    expect(result.dayIndex).toBe(1);
+    expect(result.completionPct).toBe(100);
+  });
 });
 
 describe('buildBlockComparisons', () => {
@@ -225,6 +252,44 @@ describe('buildBlockComparisons', () => {
       benchDelta: 5,
       deadliftDelta: 12.5
     });
+    expect(rows[0].confidenceScore).toBeGreaterThan(0);
+  });
+
+  it('deduplicates blocks with shared canonical keys', () => {
+    const blocks: OverallPrimaryProgress['blocks'] = [
+      {
+        blockName: 'Block 3',
+        blockNum: '3',
+        weeks: [],
+        summary: {
+          squat: { start: 100, end: 105, delta: 5, deltaPct: 5 },
+          bench: { start: 80, end: 82.5, delta: 2.5, deltaPct: 3.1 },
+          deadlift: { start: 150, end: 155, delta: 5, deltaPct: 3.3 }
+        }
+      },
+      {
+        blockName: 'Block 3 (Data)',
+        blockNum: '3',
+        weeks: [
+          {
+            weekIndex: 1,
+            squat: null,
+            bench: null,
+            deadlift: null
+          }
+        ],
+        summary: {
+          squat: { start: 100, end: 110, delta: 10, deltaPct: 10 },
+          bench: { start: 80, end: 85, delta: 5, deltaPct: 6.2 },
+          deadlift: { start: 150, end: 160, delta: 10, deltaPct: 6.7 }
+        }
+      }
+    ];
+
+    const rows = buildBlockComparisons(blocks);
+
+    expect(rows).toHaveLength(1);
+    expect(rows[0].totalDelta).toBe(25);
   });
 });
 
@@ -313,8 +378,22 @@ describe('buildGrowthRates', () => {
 
     expect(result.squat.current).toBe(120);
     expect(result.squat.overallRate).toBe(10);
-    expect(result.squat.recentRate).toBe(9);
-    expect(result.squat.blendedRate).toBe(9.4);
+    expect(result.squat.recentRate).toBe(10);
+    expect(result.squat.blockRate).toBe(9);
+    expect(result.squat.baseRate).toBe(8);
+    expect(result.squat.blendedRate).toBe(8);
+  });
+
+  it('allows negative trend rates when timeline declines', () => {
+    const timeline: OverallTimelinePoint[] = [
+      point('B1 W1', 'Block 1', '1', 120),
+      point('B1 W2', 'Block 1', '1', 117.5),
+      point('B1 W3', 'Block 1', '1', 115)
+    ];
+
+    const result = buildGrowthRates(timeline, []);
+
+    expect(result.squat.baseRate).toBeLessThan(0);
   });
 });
 
@@ -338,7 +417,11 @@ describe('buildMeetProjection', () => {
         label: 'Squat',
         current: 100,
         overallRate: 2,
+        robustLongRate: 2,
         recentRate: 2,
+        blockRate: 2,
+        baseRate: 2,
+        uncertaintyRate: 0.5,
         blendedRate: 2
       },
       bench: {
@@ -346,7 +429,11 @@ describe('buildMeetProjection', () => {
         label: 'Bench',
         current: 80,
         overallRate: 1,
+        robustLongRate: 1,
         recentRate: 1,
+        blockRate: 1,
+        baseRate: 1,
+        uncertaintyRate: 0.5,
         blendedRate: 1
       },
       deadlift: {
@@ -354,7 +441,11 @@ describe('buildMeetProjection', () => {
         label: 'Deadlift',
         current: 150,
         overallRate: 3,
+        robustLongRate: 3,
         recentRate: 3,
+        blockRate: 3,
+        baseRate: 3,
+        uncertaintyRate: 0.5,
         blendedRate: 3
       }
     });
@@ -389,6 +480,8 @@ describe('buildMeetProjection', () => {
     expect(projection.rates.bench.usedStartRate).toBe(3);
     expect(projection.rates.deadlift.usedStartRate).toBe(5);
     expect(projection.rates.squat.overrideApplied).toBe(true);
+    expect(projection.scenarios.high.total).toBeGreaterThanOrEqual(projection.scenarios.base.total);
+    expect(projection.scenarios.low.total).toBeLessThanOrEqual(projection.scenarios.base.total);
   });
 
   it('produces a lower projection than naive linear extrapolation when target rates are lower', () => {
@@ -410,7 +503,11 @@ describe('buildMeetProjection', () => {
         label: 'Squat',
         current: 100,
         overallRate: 2,
+        robustLongRate: 2,
         recentRate: 2,
+        blockRate: 2,
+        baseRate: 2,
+        uncertaintyRate: 0.5,
         blendedRate: 2
       },
       bench: {
@@ -418,7 +515,11 @@ describe('buildMeetProjection', () => {
         label: 'Bench',
         current: 80,
         overallRate: 1,
+        robustLongRate: 1,
         recentRate: 1,
+        blockRate: 1,
+        baseRate: 1,
+        uncertaintyRate: 0.5,
         blendedRate: 1
       },
       deadlift: {
@@ -426,7 +527,11 @@ describe('buildMeetProjection', () => {
         label: 'Deadlift',
         current: 150,
         overallRate: 3,
+        robustLongRate: 3,
         recentRate: 3,
+        blockRate: 3,
+        baseRate: 3,
+        uncertaintyRate: 0.5,
         blendedRate: 3
       }
     });

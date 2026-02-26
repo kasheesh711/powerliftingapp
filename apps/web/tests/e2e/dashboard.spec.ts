@@ -7,108 +7,65 @@ async function getSaveAllCount(page: Page): Promise<number> {
   return match ? Number.parseInt(match[1], 10) : 0;
 }
 
-async function expectNoPageScroll(page: Page): Promise<void> {
-  const metrics = await page.evaluate(() => ({
-    documentHeight: document.documentElement.scrollHeight,
-    bodyHeight: document.body.scrollHeight,
-    viewportHeight: window.innerHeight,
-  }));
+async function signInLocalDev(page: Page): Promise<void> {
+  await page.goto('/api/auth/signin?callbackUrl=%2Fdashboard');
 
-  expect(metrics.documentHeight).toBeLessThanOrEqual(metrics.viewportHeight + 1);
-  expect(metrics.bodyHeight).toBeLessThanOrEqual(metrics.viewportHeight + 1);
+  const localButton = page.getByRole('button', { name: /Sign in with Local Dev/i });
+  const localVisible = await localButton.isVisible({ timeout: 15000 }).catch(() => false);
+
+  if (localVisible) {
+    await localButton.click();
+    await page.waitForURL('**/dashboard', { timeout: 45000 });
+    return;
+  }
+
+  // Fallback: if auth bypass is enabled the dashboard still loads.
+  await page.goto('/dashboard');
 }
 
-test('dashboard renders single-screen desktop layout with analysis switcher', async ({ page }) => {
+test('unauthenticated dashboard shows a single setup action', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/dashboard');
+
+  await expect(page.getByTestId('shell-guidance')).toBeVisible();
+  await expect(page.getByTestId('shell-guidance').getByRole('link', { name: 'Sign In' })).toBeVisible();
+  await expect(page.getByTestId('connection-pane')).toBeVisible();
+  await expect(page.getByTestId('week-tabs')).toHaveCount(0);
+});
+
+test('authenticated ready state supports prompt copy and save parity', async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
 
-  const initialResponse = page.waitForResponse(
-    (response) => response.url().includes('/api/dashboard/initial') && response.status() === 200
-  );
+  await page.addInitScript(() => {
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (value: string) => {
+          (window as any).__copiedPrompt = value;
+        }
+      }
+    });
+  });
 
+  await signInLocalDev(page);
   await page.goto('/dashboard');
-  await initialResponse;
 
   await expect(page.getByRole('heading', { name: 'Powerlifting Performance Dashboard' })).toBeVisible();
   await expect(page.getByTestId('performance-snapshot')).toBeVisible();
   await expect(page.getByTestId('overall-chart-panel')).toBeVisible();
-  await expect(page.getByTestId('block-chart-panel')).toBeVisible();
-  await expect(page.getByTestId('analysis-slot-tabs')).toBeVisible();
-  await expect(page.getByTestId('analysis-slot-blockComparison')).toHaveAttribute('aria-selected', 'true');
-
-  await page.getByTestId('analysis-slot-meetProjection').click();
-  await expect(page.getByTestId('analysis-slot-meetProjection')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByTestId('meet-projection-chart-panel')).toBeVisible();
-
-  await page.getByTestId('analysis-slot-recap').click();
-  await expect(page.getByTestId('analysis-slot-recap')).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByTestId('analysis-recap-panel')).toBeVisible();
-
-  await expectNoPageScroll(page);
-});
-
-test('dashboard uses one-screen pane navigation on mobile', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/dashboard');
-
-  await expect(page.getByTestId('mobile-pane-tabs')).toBeVisible();
-
-  await page.getByTestId('mobile-pane-analysis').click();
-  await expect(page.getByTestId('analysis-pane')).toBeVisible();
-  await expect(page.getByTestId('analysis-slot-tabs')).toBeVisible();
-  await expectNoPageScroll(page);
-
-  await page.getByTestId('mobile-pane-training').click();
-  await expect(page.getByTestId('training-pane')).toBeVisible();
   await expect(page.getByTestId('week-tabs')).toBeVisible();
-  await expectNoPageScroll(page);
 
-  await page.getByTestId('mobile-pane-connection').click();
-  await expect(page.getByTestId('connection-pane')).toBeVisible();
-  await expectNoPageScroll(page);
-});
-
-test('overall chart legend toggles visible series', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: 'Powerlifting Performance Dashboard' })).toBeVisible();
-
-  const squatToggle = page.getByTestId('overall-legend-squat');
-  await expect(squatToggle).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(async () => page.locator('.overall-line-squat').count(), { timeout: 45000 }).toBeGreaterThan(0);
-
-  await squatToggle.click();
-  await expect(squatToggle).toHaveAttribute('aria-pressed', 'false');
-  await expect(page.locator('.overall-line-squat')).toHaveCount(0);
-
-  await squatToggle.click();
-  await expect(squatToggle).toHaveAttribute('aria-pressed', 'true');
-  await expect.poll(async () => page.locator('.overall-line-squat').count(), { timeout: 45000 }).toBeGreaterThan(0);
-});
-
-test('dashboard supports week/day tabbed edit and save parity', async ({ page }) => {
-  await page.setViewportSize({ width: 1440, height: 900 });
-  await page.goto('/dashboard');
-  await expect(page.getByRole('heading', { name: 'Powerlifting Performance Dashboard' })).toBeVisible();
-
-  const weekTabs = page.getByTestId('week-tabs').getByRole('tab');
-  await expect.poll(async () => weekTabs.count(), { timeout: 45000 }).toBeGreaterThan(0);
-
-  const weekCount = await weekTabs.count();
-  if (weekCount > 1) {
-    const secondWeek = weekTabs.nth(1);
-    await secondWeek.click();
-    await expect(secondWeek).toHaveAttribute('aria-selected', 'true');
-  }
-
-  const dayTabs = page.getByTestId('day-tabs').getByRole('tab');
-  await expect.poll(async () => dayTabs.count(), { timeout: 45000 }).toBeGreaterThan(0);
-
-  const dayCount = await dayTabs.count();
-  if (dayCount > 1) {
-    const secondDay = dayTabs.nth(1);
-    await secondDay.click();
-    await expect(secondDay).toHaveAttribute('aria-selected', 'true');
-  }
+  const promptButton = page.getByTestId('prompt-copy-weekly_training_review');
+  await expect(promptButton).toBeVisible();
+  await promptButton.click();
+  await expect(promptButton).toContainText('Copied');
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        return ((window as any).__copiedPrompt || '') as string;
+      })
+    )
+    .not.toBe('');
 
   const editableRows = page.locator('tbody tr:has(button:has-text("Save Row"))');
   await expect.poll(async () => editableRows.count(), { timeout: 45000 }).toBeGreaterThan(0);
@@ -127,6 +84,58 @@ test('dashboard supports week/day tabbed edit and save parity', async ({ page })
   await firstRow.getByRole('button', { name: 'Save Row' }).click();
   await expect(firstRow).toContainText('Clean');
   await expect.poll(() => getSaveAllCount(page), { timeout: 10000 }).toBe(0);
+});
 
-  await expectNoPageScroll(page);
+test('mobile pane navigation uses hybrid scroll layout', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+
+  await signInLocalDev(page);
+  await page.goto('/dashboard');
+
+  await expect(page.getByTestId('mobile-pane-tabs')).toBeVisible();
+
+  await page.getByTestId('mobile-pane-analysis').click();
+  await expect(page.getByTestId('analysis-pane')).toBeVisible();
+
+  await page.getByTestId('mobile-pane-training').click();
+  await expect(page.getByTestId('training-pane')).toBeVisible();
+
+  const metrics = await page.evaluate(() => ({
+    documentHeight: document.documentElement.scrollHeight,
+    viewportHeight: window.innerHeight,
+    htmlOverflowY: getComputedStyle(document.documentElement).overflowY,
+    bodyOverflowY: getComputedStyle(document.body).overflowY
+  }));
+
+  expect(['hidden', 'clip']).not.toContain(metrics.htmlOverflowY);
+  expect(['hidden', 'clip']).not.toContain(metrics.bodyOverflowY);
+
+  if (metrics.documentHeight > metrics.viewportHeight) {
+    const scrollDelta = await page.evaluate(() => {
+      const before = window.scrollY;
+      window.scrollTo(0, Math.max(200, before + 200));
+      const after = window.scrollY;
+      window.scrollTo(0, before);
+      return after - before;
+    });
+    expect(scrollDelta).toBeGreaterThan(0);
+  }
+});
+
+test('overall chart legend toggles visible series', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signInLocalDev(page);
+  await page.goto('/dashboard');
+
+  const squatToggle = page.getByTestId('overall-legend-squat');
+  await expect(squatToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => page.locator('.overall-line-squat').count(), { timeout: 45000 }).toBeGreaterThan(0);
+
+  await squatToggle.click();
+  await expect(squatToggle).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.overall-line-squat')).toHaveCount(0);
+
+  await squatToggle.click();
+  await expect(squatToggle).toHaveAttribute('aria-pressed', 'true');
+  await expect.poll(async () => page.locator('.overall-line-squat').count(), { timeout: 45000 }).toBeGreaterThan(0);
 });

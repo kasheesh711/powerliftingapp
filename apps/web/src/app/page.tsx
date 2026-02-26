@@ -13,8 +13,8 @@ export default function HomePage(): JSX.Element {
       <section
         style={{
           width: 'min(760px, 100%)',
-          background: 'var(--surface)',
-          border: '1px solid var(--border)',
+          background: 'var(--surface-2)',
+          border: '1px solid var(--border-default)',
           borderRadius: 12,
           padding: 24,
           display: 'grid',
@@ -22,7 +22,7 @@ export default function HomePage(): JSX.Element {
         }}
       >
         <h1 style={{ margin: 0 }}>Powerlifting Dashboard Migration</h1>
-        <p style={{ margin: 0, color: 'var(--muted)' }}>
+        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
           App Router target with contract-frozen dashboard APIs and dual backend adapters.
         </p>
         <div>

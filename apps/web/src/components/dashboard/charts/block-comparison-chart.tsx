@@ -34,6 +34,12 @@ function ComparisonTooltip({ active, payload }: TooltipProps<number, string>): J
         <span className={styles.tooltipName}>Deadlift</span>
         <span className={styles.tooltipValue}>{datum.deadliftDelta.toFixed(1)} kg</span>
       </div>
+      <div className={styles.tooltipRow}>
+        <span className={styles.tooltipName}>Confidence</span>
+        <span className={styles.tooltipValue}>
+          {datum.confidenceLabel} ({datum.confidenceScore.toFixed(0)}%)
+        </span>
+      </div>
     </div>
   );
 }
@@ -73,7 +79,7 @@ export function BlockComparisonChart({ comparisons }: { comparisons: BlockCompar
             <Bar dataKey="totalDelta" radius={[8, 8, 0, 0]}>
               {comparisons.map((entry) => (
                 <Cell
-                  key={`${entry.blockName}-${entry.blockLabel}`}
+                  key={`${entry.canonicalKey}-${entry.blockLabel}`}
                   fill={entry.totalDelta >= 0 ? 'var(--accent-primary)' : 'var(--danger)'}
                 />
               ))}

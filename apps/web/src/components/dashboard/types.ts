@@ -7,6 +7,31 @@ export type DashboardPane = 'overview' | 'training' | 'analysis' | 'connection';
 export type AnalysisSlot = 'blockComparison' | 'meetProjection' | 'recap';
 
 export type DashboardViewportMode = 'desktop' | 'mobile';
+export type DashboardShellState = 'unauthenticated' | 'authenticated_no_block' | 'ready';
+
+export type PromptTemplateId =
+  | 'weekly_training_review'
+  | 'attempt_selection_planner'
+  | 'adjustment_decision_prompt';
+
+export interface PromptContextVM {
+  generatedAt: string;
+  blockName: string;
+  weekLabel: string;
+  dayLabel: string;
+  completionPct: number;
+  primaryCompletionPct: number;
+  currentTotalKg: number;
+  projectedTotalKg: number;
+  projectedLowTotalKg: number;
+  projectedHighTotalKg: number;
+  weeksRemaining: number;
+  ratesKgPerWeek: {
+    squat: number;
+    bench: number;
+    deadlift: number;
+  };
+}
 
 export interface DashboardUiState {
   activePane: DashboardPane;
