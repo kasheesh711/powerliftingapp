@@ -1,4 +1,10 @@
 import type { BlockRow, OverallPrimaryProgress, OverallTimelinePoint, PrimaryByWeek } from '@powerlifting/domain';
+import {
+  getDefaultSelectedWeightClasses,
+  normalizeSelectedWeightClasses,
+  resolveOpenIpfProjectionTargets,
+  type ProjectionSex,
+} from './openipf-projection';
 
 const LIFTS = ['squat', 'bench', 'deadlift'] as const;
 const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000;
@@ -90,10 +96,39 @@ export interface GrowthRateVM {
 
 export type GrowthRatesByLift = Record<PrimaryLift, GrowthRateVM>;
 
+export interface ProjectionModelSettingsVM {
+  sex: ProjectionSex;
+  bodyweightKg: number;
+  completedMeets: number;
+  selectedWeightClasses: string[];
+  manualRateOverrides: Record<PrimaryLift, number | null>;
+}
+
+export interface ProjectionRateDetailsVM {
+  lift: PrimaryLift;
+  autoRate: number;
+  usedStartRate: number;
+  targetRate: number;
+  sampleSize: number;
+  transitionLabel: string;
+  overrideApplied: boolean;
+  usedFallback: boolean;
+}
+
 export interface MeetProjectionVM {
   meetDate: string;
   weeksRemaining: number;
   currentPosition: CurrentPositionVM;
+  model: {
+    sex: ProjectionSex;
+    bodyweightKg: number;
+    completedMeets: number;
+    selectedWeightClasses: string[];
+    transitionLabel: string;
+    maxTransition: number;
+    sampleSize: number;
+  };
+  rates: Record<PrimaryLift, ProjectionRateDetailsVM>;
   current: {
     squat: number;
     bench: number;
@@ -368,6 +403,50 @@ function parseDateInput(value: string): Date | null {
 
 function clampNonNegative(value: number): number {
   return Math.max(0, value);
+}
+
+function normalizeProjectionSettings(settings: ProjectionModelSettingsVM): ProjectionModelSettingsVM {
+  const sex: ProjectionSex = settings.sex === 'female' ? 'female' : 'male';
+  const bodyweightKg = Number.isFinite(settings.bodyweightKg) && settings.bodyweightKg > 0 ? settings.bodyweightKg : 80;
+  const completedMeets =
+    Number.isFinite(settings.completedMeets) && settings.completedMeets >= 0 ? Math.floor(settings.completedMeets) : 0;
+
+  const defaultClasses = getDefaultSelectedWeightClasses(sex);
+  const normalizedSelected = normalizeSelectedWeightClasses(sex, settings.selectedWeightClasses || []);
+  const selectedWeightClasses = normalizedSelected.length ? normalizedSelected : defaultClasses;
+
+  const manualRateOverrides: Record<PrimaryLift, number | null> = {
+    squat: numericOrNull(settings.manualRateOverrides?.squat),
+    bench: numericOrNull(settings.manualRateOverrides?.bench),
+    deadlift: numericOrNull(settings.manualRateOverrides?.deadlift),
+  };
+
+  return {
+    sex,
+    bodyweightKg,
+    completedMeets,
+    selectedWeightClasses,
+    manualRateOverrides,
+  };
+}
+
+function projectLiftWithLogDecay(currentLift: number, startRate: number, targetRate: number, weeksRemaining: number): number {
+  if (weeksRemaining <= 0) {
+    return currentLift;
+  }
+
+  const safeStart = clampNonNegative(startRate);
+  const safeTarget = clampNonNegative(Math.min(safeStart, targetRate));
+  const denominator = Math.log(1 + weeksRemaining);
+  let projected = currentLift;
+
+  for (let week = 1; week <= weeksRemaining; week += 1) {
+    const decay = denominator > 0 ? Math.log(1 + week) / denominator : 1;
+    const weekRate = safeStart - (safeStart - safeTarget) * decay;
+    projected += weekRate;
+  }
+
+  return clampNonNegative(projected);
 }
 
 function getCurrentLiftFromRows(rows: BlockRow[], currentPosition: CurrentPositionVM, lift: PrimaryLift): number | null {
@@ -660,8 +739,10 @@ export function buildMeetProjection(input: {
   meetDate: string;
   currentPosition: CurrentPositionVM;
   growthRates: GrowthRatesByLift;
+  modelSettings: ProjectionModelSettingsVM;
 }): MeetProjectionVM {
   const { rows, timeline, meetDate, currentPosition, growthRates } = input;
+  const modelSettings = normalizeProjectionSettings(input.modelSettings);
   const meetDateObj = parseDateInput(meetDate);
   const todayStart = startOfLocalDay(new Date());
   const meetStart = meetDateObj ? startOfLocalDay(meetDateObj) : todayStart;
@@ -677,9 +758,41 @@ export function buildMeetProjection(input: {
     growthRates.deadlift.current ??
     getCurrentLiftFromTimeline(timeline, 'deadlift');
 
-  const projectedSquat = clampNonNegative(currentSquat + growthRates.squat.blendedRate * weeksRemaining);
-  const projectedBench = clampNonNegative(currentBench + growthRates.bench.blendedRate * weeksRemaining);
-  const projectedDeadlift = clampNonNegative(currentDeadlift + growthRates.deadlift.blendedRate * weeksRemaining);
+  const targets = resolveOpenIpfProjectionTargets({
+    sex: modelSettings.sex,
+    bodyweightKg: modelSettings.bodyweightKg,
+    completedMeets: modelSettings.completedMeets,
+    selectedWeightClasses: modelSettings.selectedWeightClasses,
+  });
+
+  const squatStartRate = clampNonNegative(
+    numericOrNull(modelSettings.manualRateOverrides.squat) ?? growthRates.squat.blendedRate
+  );
+  const benchStartRate = clampNonNegative(
+    numericOrNull(modelSettings.manualRateOverrides.bench) ?? growthRates.bench.blendedRate
+  );
+  const deadliftStartRate = clampNonNegative(
+    numericOrNull(modelSettings.manualRateOverrides.deadlift) ?? growthRates.deadlift.blendedRate
+  );
+
+  const projectedSquat = projectLiftWithLogDecay(
+    currentSquat,
+    squatStartRate,
+    targets.liftTargets.squat.rate,
+    weeksRemaining
+  );
+  const projectedBench = projectLiftWithLogDecay(
+    currentBench,
+    benchStartRate,
+    targets.liftTargets.bench.rate,
+    weeksRemaining
+  );
+  const projectedDeadlift = projectLiftWithLogDecay(
+    currentDeadlift,
+    deadliftStartRate,
+    targets.liftTargets.deadlift.rate,
+    weeksRemaining
+  );
 
   const currentTotal = currentSquat + currentBench + currentDeadlift;
   const projectedTotal = projectedSquat + projectedBench + projectedDeadlift;
@@ -688,6 +801,47 @@ export function buildMeetProjection(input: {
     meetDate,
     weeksRemaining,
     currentPosition,
+    model: {
+      sex: modelSettings.sex,
+      bodyweightKg: roundOneDecimal(modelSettings.bodyweightKg),
+      completedMeets: modelSettings.completedMeets,
+      selectedWeightClasses: targets.selectedWeightClasses,
+      transitionLabel: targets.transitionLabel,
+      maxTransition: targets.maxTransition,
+      sampleSize: targets.totalSampleSize,
+    },
+    rates: {
+      squat: {
+        lift: 'squat',
+        autoRate: roundOneDecimal(growthRates.squat.blendedRate),
+        usedStartRate: roundOneDecimal(squatStartRate),
+        targetRate: roundOneDecimal(targets.liftTargets.squat.rate),
+        sampleSize: targets.liftTargets.squat.sampleSize,
+        transitionLabel: targets.transitionLabel,
+        overrideApplied: numericOrNull(modelSettings.manualRateOverrides.squat) !== null,
+        usedFallback: targets.liftTargets.squat.usedFallback,
+      },
+      bench: {
+        lift: 'bench',
+        autoRate: roundOneDecimal(growthRates.bench.blendedRate),
+        usedStartRate: roundOneDecimal(benchStartRate),
+        targetRate: roundOneDecimal(targets.liftTargets.bench.rate),
+        sampleSize: targets.liftTargets.bench.sampleSize,
+        transitionLabel: targets.transitionLabel,
+        overrideApplied: numericOrNull(modelSettings.manualRateOverrides.bench) !== null,
+        usedFallback: targets.liftTargets.bench.usedFallback,
+      },
+      deadlift: {
+        lift: 'deadlift',
+        autoRate: roundOneDecimal(growthRates.deadlift.blendedRate),
+        usedStartRate: roundOneDecimal(deadliftStartRate),
+        targetRate: roundOneDecimal(targets.liftTargets.deadlift.rate),
+        sampleSize: targets.liftTargets.deadlift.sampleSize,
+        transitionLabel: targets.transitionLabel,
+        overrideApplied: numericOrNull(modelSettings.manualRateOverrides.deadlift) !== null,
+        usedFallback: targets.liftTargets.deadlift.usedFallback,
+      },
+    },
     current: {
       squat: roundOneDecimal(currentSquat),
       bench: roundOneDecimal(currentBench),

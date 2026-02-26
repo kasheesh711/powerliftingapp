@@ -1,6 +1,7 @@
 .chartPanel {
   display: grid;
-  gap: 0.82rem;
+  gap: 0.56rem;
+  min-height: 0;
 }
 
 .chartHeader {
@@ -25,7 +26,7 @@
 
 .chartWrap {
   width: 100%;
-  min-height: 276px;
+  min-height: 212px;
 }
 
 .chartLegend {
@@ -88,7 +89,7 @@
 }
 
 .chartEmpty {
-  min-height: 212px;
+  min-height: 170px;
   border: 1px dashed var(--border-default);
   border-radius: 0.86rem;
   display: grid;
@@ -136,8 +137,20 @@
   font-weight: 600;
 }
 
+@media (max-width: 1080px) {
+  .chartWrap {
+    min-height: 186px;
+  }
+}
+
 @media (max-width: 840px) {
   .chartWrap {
-    min-height: 236px;
+    min-height: 170px;
+  }
+}
+
+@media (max-width: 760px) {
+  .chartWrap {
+    min-height: 156px;
   }
 }

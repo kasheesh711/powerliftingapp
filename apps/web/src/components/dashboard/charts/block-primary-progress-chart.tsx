@@ -101,7 +101,7 @@ export function BlockPrimaryProgressChart({ primaryByWeek }: { primaryByWeek: Pr
       </div>
 
       <div className={styles.chartWrap}>
-        <ResponsiveContainer width="100%" height={276}>
+        <ResponsiveContainer width="100%" height={208}>
           <LineChart data={series.data} margin={{ top: 8, right: 20, left: 4, bottom: 8 }}>
             <CartesianGrid stroke="var(--border-default)" strokeDasharray="3 5" vertical={false} />
             <XAxis

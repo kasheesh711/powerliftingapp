@@ -1,54 +1,64 @@
 .page {
-  min-height: 100vh;
-  padding: clamp(1rem, 2vw, 1.65rem);
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding: clamp(0.6rem, 1.1vw, 1rem);
 }
 
 .shell {
-  width: min(1440px, 100%);
+  height: 100%;
+  min-height: 0;
+  width: min(1680px, 100%);
   margin: 0 auto;
   display: grid;
-  gap: 0.95rem;
-  animation: fade-in-up 360ms ease both;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 0.62rem;
+  animation: fade-in-up 280ms ease both;
 }
 
 .panel {
-  background: var(--surface-1);
+  background: color-mix(in srgb, var(--surface-1) 92%, black 8%);
   border: 1px solid var(--border-default);
-  border-radius: 0.95rem;
-  padding: clamp(0.88rem, 1.3vw, 1.18rem);
+  border-radius: 0.8rem;
   box-shadow: var(--shadow-soft);
+  padding: 0.62rem;
 }
 
 .commandDeck {
   display: grid;
-  gap: 0.95rem;
+  gap: 0.62rem;
 }
 
 .commandHeader {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
-  gap: 1rem;
+  gap: 0.75rem;
 }
 
 .title {
   margin: 0;
-  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: clamp(1.56rem, 1.95vw, 2.05rem);
-  line-height: 1.08;
   color: var(--text-strong);
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: clamp(1.18rem, 1.38vw, 1.5rem);
+  line-height: 1.08;
 }
 
 .subtitle {
-  margin: 0.44rem 0 0;
-  max-width: 66ch;
+  margin: 0.3rem 0 0;
   color: var(--text-muted);
-  font-size: 0.89rem;
+  font-size: 0.78rem;
+}
+
+.headerMeta {
+  display: grid;
+  justify-items: end;
+  align-content: start;
+  gap: 0.48rem;
 }
 
 .pending {
   color: var(--text-muted);
-  font-size: 0.8rem;
+  font-size: 0.75rem;
 }
 
 .pendingStrong {
@@ -56,129 +66,78 @@
   font-weight: 650;
 }
 
-.statusPills {
+.actionsRow {
   display: flex;
   flex-wrap: wrap;
   justify-content: flex-end;
-  gap: 0.52rem;
+  gap: 0.44rem;
+}
+
+.statusPills {
+  display: flex;
+  gap: 0.42rem;
+  flex-wrap: wrap;
 }
 
 .statusPill {
   border: 1px solid var(--border-default);
   background: var(--surface-2);
   border-radius: 999px;
-  padding: 0.34rem 0.66rem;
+  padding: 0.28rem 0.56rem;
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
-  font-size: 0.71rem;
-  line-height: 1;
+  gap: 0.32rem;
+  min-width: 0;
+  font-size: 0.68rem;
 }
 
 .statusLabel {
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
 }
 
 .statusValue {
   color: var(--text-strong);
   font-weight: 600;
-  max-width: 210px;
+  max-width: 220px;
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
 }
 
-.controlGrid {
-  display: grid;
-  gap: 0.82rem;
-  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+.mobilePaneNav {
+  display: none;
 }
 
-.cardTitle {
-  margin: 0;
-  color: var(--text-strong);
-  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: 0.9rem;
-  letter-spacing: 0.02em;
-}
-
-.connectionCard,
-.controlCard,
-.projectionControls,
-.recapItem {
+.mobilePaneButton {
+  appearance: none;
   border: 1px solid var(--border-default);
-  border-radius: 0.85rem;
-  background: var(--surface-2);
-}
-
-.connectionCard,
-.controlCard {
-  padding: 0.84rem;
-  display: grid;
-  gap: 0.68rem;
-}
-
-.connectionRows {
-  display: grid;
-  gap: 0.3rem;
-  color: var(--text-muted);
-  font-size: 0.82rem;
-}
-
-.connectionRows strong {
+  background: var(--surface-3);
   color: var(--text);
-  font-weight: 600;
-}
-
-.linkRow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.52rem;
-}
-
-.inlineForm {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-}
-
-.inlineForm input {
-  flex: 1 1 280px;
-}
-
-.controlLabel {
-  display: grid;
-  gap: 0.34rem;
-  flex: 1 1 250px;
-  max-width: 340px;
-}
-
-.controlLabel span {
-  color: var(--text-muted);
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 0.07em;
-}
-
-.actionsRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.52rem;
-}
-
-.infoHint {
-  color: var(--text-muted);
+  border-radius: 0.58rem;
+  padding: 0.44rem 0.56rem;
   font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.mobilePaneButtonActive {
+  border-color: color-mix(in srgb, var(--accent-primary) 66%, var(--border-default) 34%);
+  background: color-mix(in srgb, var(--accent-primary) 22%, var(--surface-3) 78%);
+  color: var(--text-strong);
+}
+
+.bannerStack {
+  display: grid;
+  gap: 0.46rem;
 }
 
 .banner {
-  border-radius: 0.9rem;
+  border-radius: 0.72rem;
   border: 1px solid;
-  padding: 0.72rem 0.86rem;
-  font-size: 0.84rem;
+  padding: 0.5rem 0.64rem;
+  font-size: 0.78rem;
 }
 
 .bannerError {
@@ -193,130 +152,170 @@
   color: color-mix(in srgb, var(--warning) 82%, white 18%);
 }
 
-.snapshotPanel {
+.workspace {
+  min-height: 0;
   display: grid;
-  gap: 0.88rem;
+  gap: 0.62rem;
+  grid-template-columns: minmax(0, 1.7fr) minmax(320px, 1fr);
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-areas:
+    'overview connection'
+    'analysis training';
 }
 
-.sectionHeader {
+.pane {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 0.56rem;
+}
+
+.paneHeader {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  gap: 0.7rem;
+  gap: 0.66rem;
 }
 
 .sectionTitle {
   margin: 0;
   color: var(--text-strong);
   font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: 1.03rem;
+  font-size: 0.92rem;
+  letter-spacing: 0.02em;
 }
 
 .sectionHint {
   margin: 0;
   color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.paneBody {
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  align-content: start;
+  gap: 0.58rem;
+  padding-right: 0.08rem;
+}
+
+.emptyState {
+  min-height: 120px;
+  border: 1px dashed var(--border-default);
+  border-radius: 0.68rem;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
   font-size: 0.78rem;
+  padding: 0.8rem;
+  background: color-mix(in srgb, var(--surface-2) 84%, black 16%);
 }
 
-.snapshotGrid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.8fr) minmax(250px, 1fr);
-  gap: 0.82rem;
+.overviewPane {
+  grid-area: overview;
 }
 
-.snapshotMetrics {
-  display: grid;
-  gap: 0.7rem;
+.analysisPane {
+  grid-area: analysis;
+}
+
+.connectionPane {
+  grid-area: connection;
+}
+
+.trainingPane {
+  grid-area: training;
 }
 
 .totalsGrid {
   display: grid;
-  gap: 0.6rem;
+  gap: 0.44rem;
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .totalCard {
   border: 1px solid var(--border-default);
-  border-radius: 0.82rem;
+  border-radius: 0.62rem;
   background: var(--surface-2);
-  padding: 0.72rem;
+  padding: 0.46rem;
   display: grid;
-  gap: 0.34rem;
+  gap: 0.2rem;
 }
 
 .totalCardStrong {
-  border-color: color-mix(in srgb, var(--accent-primary) 52%, var(--border-default) 48%);
-  background: color-mix(in srgb, var(--surface-2) 82%, black 18%);
+  border-color: color-mix(in srgb, var(--accent-primary) 56%, var(--border-default) 44%);
+  background: color-mix(in srgb, var(--surface-2) 80%, black 20%);
 }
 
 .metricLabel {
   margin: 0;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-size: 0.69rem;
+  letter-spacing: 0.06em;
+  font-size: 0.62rem;
 }
 
 .metricValue {
   margin: 0;
   color: var(--text-strong);
   font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: clamp(1.15rem, 1.5vw, 1.5rem);
-  line-height: 1.08;
+  font-size: clamp(0.98rem, 1.12vw, 1.24rem);
+  line-height: 1.04;
 }
 
 .coefficientRow {
   border: 1px solid var(--border-default);
-  border-radius: 0.82rem;
+  border-radius: 0.62rem;
   background: var(--surface-2);
+  padding: 0.4rem 0.46rem;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.5rem;
-  padding: 0.66rem 0.72rem;
+  gap: 0.4rem;
 }
 
 .coefficientItem {
   display: grid;
-  gap: 0.2rem;
+  gap: 0.14rem;
 }
 
 .coefficientItem span {
   color: var(--text-muted);
-  font-size: 0.66rem;
+  font-size: 0.6rem;
   text-transform: uppercase;
-  letter-spacing: 0.07em;
+  letter-spacing: 0.06em;
 }
 
 .coefficientItem strong {
   color: var(--text);
-  font-size: 0.84rem;
+  font-size: 0.75rem;
   font-weight: 600;
 }
 
 .liftGrid {
   border: 1px solid var(--border-default);
-  border-radius: 0.82rem;
+  border-radius: 0.62rem;
   background: var(--surface-2);
   display: grid;
-  grid-template-columns: 1.1fr repeat(3, minmax(0, 1fr));
-  gap: 0;
+  grid-template-columns: 1fr repeat(4, minmax(0, 1fr));
   overflow: hidden;
 }
 
 .liftGrid > div {
-  padding: 0.5rem 0.62rem;
-  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 85%, transparent 15%);
+  padding: 0.34rem 0.4rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--border-default) 82%, transparent 18%);
+  font-size: 0.72rem;
 }
 
-.liftGrid > div:nth-last-child(-n + 4) {
+.liftGrid > div:nth-last-child(-n + 5) {
   border-bottom: none;
 }
 
 .liftGridHeader {
   color: var(--text-muted);
-  font-size: 0.67rem;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
-  letter-spacing: 0.08em;
   font-weight: 600;
   background: color-mix(in srgb, var(--surface-3) 84%, black 16%);
 }
@@ -326,44 +325,141 @@
   font-weight: 600;
 }
 
-.projectionControls {
-  padding: 0.82rem;
+.controlCluster {
   display: grid;
-  align-content: start;
-  gap: 0.62rem;
-}
-
-.positionSummary {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
   gap: 0.5rem;
-  color: var(--text);
-  font-size: 0.82rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
-.chartsGrid {
+.controlLabel {
   display: grid;
-  gap: 0.82rem;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: 0.22rem;
+}
+
+.controlLabel span {
+  color: var(--text-muted);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.weightClassGrid {
+  display: grid;
+  gap: 0.34rem;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.weightClassOption {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.32rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.5rem;
+  background: var(--surface-3);
+  padding: 0.26rem 0.4rem;
+  color: var(--text);
+  font-size: 0.68rem;
+}
+
+.weightClassOption input {
+  margin: 0;
+}
+
+.weightClassOptionActive {
+  border-color: color-mix(in srgb, var(--accent-primary) 60%, var(--border-default) 40%);
+  background: color-mix(in srgb, var(--accent-primary) 16%, transparent 84%);
+}
+
+.rateOverrides {
+  display: grid;
+  gap: 0.44rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.rateOverrides label {
+  display: grid;
+  gap: 0.22rem;
+}
+
+.rateOverrides label span {
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 0.6rem;
+}
+
+.coreChartsGrid {
+  display: grid;
+  gap: 0.54rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .chartCard {
-  grid-column: span 6;
+  border: 1px solid var(--border-default);
+  border-radius: 0.66rem;
+  background: color-mix(in srgb, var(--surface-2) 92%, black 8%);
+  padding: 0.46rem;
+  min-height: 0;
 }
 
-.chartCardWide {
-  grid-column: span 12;
+.slotHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.cardTitle {
+  margin: 0;
+  color: var(--text-strong);
+  font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
+  font-size: 0.84rem;
+}
+
+.segmentedControl {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.3rem;
+}
+
+.segmentedButton {
+  appearance: none;
+  border: 1px solid var(--border-default);
+  background: var(--surface-3);
+  color: var(--text);
+  border-radius: 0.52rem;
+  padding: 0.36rem 0.52rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.segmentedButtonActive {
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-default) 38%);
+  background: color-mix(in srgb, var(--accent-primary) 20%, var(--surface-3) 80%);
+  color: var(--text-strong);
+}
+
+.slotBody {
+  border: 1px solid var(--border-default);
+  border-radius: 0.68rem;
+  background: color-mix(in srgb, var(--surface-2) 94%, black 6%);
+  padding: 0.46rem;
+  min-height: 0;
 }
 
 .recapGrid {
   display: grid;
-  gap: 0.7rem;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 0.54rem;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .recapItem {
-  padding: 0.68rem;
+  border: 1px solid var(--border-default);
+  border-radius: 0.62rem;
+  background: var(--surface-2);
+  padding: 0.5rem;
 }
 
 .recapLabel {
@@ -371,28 +467,100 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  font-size: 0.69rem;
+  font-size: 0.62rem;
 }
 
 .recapValue {
-  margin: 0.32rem 0 0;
+  margin: 0.24rem 0 0;
   color: var(--text);
-  font-size: 0.85rem;
-  line-height: 1.34;
+  font-size: 0.74rem;
+  line-height: 1.3;
   white-space: pre-wrap;
 }
 
-.tableContainer {
+.connectionRows {
+  display: grid;
+  gap: 0.24rem;
+  color: var(--text-muted);
+  font-size: 0.74rem;
+}
+
+.connectionRows strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.linkRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.46rem;
+}
+
+.inlineForm {
+  display: flex;
+  gap: 0.46rem;
+  flex-wrap: wrap;
+}
+
+.inlineForm input {
+  flex: 1 1 240px;
+}
+
+.infoHint {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.trainingPane .paneBody {
+  overflow: hidden;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+
+.tabRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.34rem;
+}
+
+.tabButton {
+  appearance: none;
   border: 1px solid var(--border-default);
-  border-radius: 0.9rem;
+  background: var(--surface-3);
+  color: var(--text);
+  border-radius: 0.52rem;
+  padding: 0.32rem 0.52rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tabButtonActive {
+  border-color: color-mix(in srgb, var(--accent-primary) 62%, var(--border-default) 38%);
+  background: color-mix(in srgb, var(--accent-primary) 20%, var(--surface-3) 80%);
+  color: var(--text-strong);
+}
+
+.positionSummary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.42rem;
+  color: var(--text);
+  font-size: 0.74rem;
+}
+
+.tableContainer {
+  min-height: 0;
+  border: 1px solid var(--border-default);
+  border-radius: 0.68rem;
   overflow: auto;
-  max-height: min(66vh, 760px);
   background: var(--surface-2);
 }
 
 .table {
   width: 100%;
-  min-width: 860px;
+  min-width: 620px;
   border-collapse: separate;
   border-spacing: 0;
 }
@@ -405,44 +573,28 @@
   border-bottom: 1px solid var(--border-default);
   text-align: left;
   color: var(--text-muted);
-  font-size: 0.7rem;
-  letter-spacing: 0.07em;
+  font-size: 0.64rem;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
   font-weight: 600;
-  padding: 0.6rem 0.6rem;
+  padding: 0.44rem 0.48rem;
 }
 
 .table tbody td {
-  padding: 0.48rem 0.6rem;
+  padding: 0.36rem 0.48rem;
   border-bottom: 1px solid color-mix(in srgb, var(--border-default) 82%, transparent 18%);
   color: var(--text);
-  font-size: 0.84rem;
+  font-size: 0.75rem;
   vertical-align: top;
 }
 
-.weekDivider td {
-  background: color-mix(in srgb, var(--surface-3) 78%, black 22%);
-  color: var(--text-strong);
-  border-top: 1px solid var(--border-default);
-  border-bottom: 1px solid var(--border-default);
-  font-size: 0.78rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 0.48rem 0.6rem;
-}
-
-.dayDivider td {
-  background: color-mix(in srgb, var(--surface-2) 90%, black 10%);
-  color: var(--text-muted);
-  border-bottom: 1px solid var(--border-default);
-  font-size: 0.74rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+.rowDirty td {
+  background: color-mix(in srgb, var(--accent-primary) 8%, transparent 92%);
 }
 
 .exercise {
   display: grid;
-  gap: 0.18rem;
+  gap: 0.14rem;
 }
 
 .exerciseName {
@@ -452,12 +604,12 @@
 
 .exerciseMeta {
   color: var(--text-muted);
-  font-size: 0.73rem;
+  font-size: 0.66rem;
 }
 
 .cellInput {
   width: 100%;
-  min-width: 92px;
+  min-width: 86px;
 }
 
 .cellInputDirty {
@@ -465,15 +617,11 @@
   box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 20%, transparent 80%);
 }
 
-.rowDirty td {
-  background: color-mix(in srgb, var(--accent-primary) 7%, transparent 93%);
-}
-
 .badge {
   border: 1px solid var(--border-default);
   border-radius: 999px;
-  padding: 0.2rem 0.5rem;
-  font-size: 0.67rem;
+  padding: 0.16rem 0.42rem;
+  font-size: 0.62rem;
   text-transform: uppercase;
   letter-spacing: 0.04em;
   font-weight: 600;
@@ -500,37 +648,37 @@
   position: fixed;
   inset: 0;
   background: rgb(0 0 0 / 72%);
-  z-index: 60;
+  z-index: 70;
   display: grid;
   place-items: center;
-  padding: 1rem;
+  padding: 0.9rem;
 }
 
 .modalCard {
   width: min(760px, 100%);
   background: var(--surface-1);
-  border: 1px solid color-mix(in srgb, var(--warning) 40%, var(--border-default) 60%);
-  border-radius: 1rem;
-  padding: 0.95rem;
+  border: 1px solid color-mix(in srgb, var(--warning) 42%, var(--border-default) 58%);
+  border-radius: 0.88rem;
+  padding: 0.78rem;
   display: grid;
-  gap: 0.82rem;
-  box-shadow: 0 30px 80px rgb(0 0 0 / 0.52);
+  gap: 0.66rem;
+  box-shadow: 0 30px 80px rgb(0 0 0 / 0.5);
 }
 
 .modalTitle {
   margin: 0;
   color: var(--text-strong);
   font-family: var(--font-display), 'Avenir Next', 'Segoe UI', sans-serif;
-  font-size: 1.06rem;
+  font-size: 0.98rem;
 }
 
 .conflictList {
   margin: 0;
   padding-left: 1rem;
   color: var(--text);
-  font-size: 0.83rem;
+  font-size: 0.78rem;
   display: grid;
-  gap: 0.35rem;
+  gap: 0.32rem;
 }
 
 .conflictList code {
@@ -541,7 +689,7 @@
   display: flex;
   justify-content: flex-end;
   flex-wrap: wrap;
-  gap: 0.52rem;
+  gap: 0.46rem;
 }
 
 .buttonPrimary,
@@ -550,12 +698,12 @@
 .buttonDanger {
   appearance: none;
   border: 1px solid transparent;
-  border-radius: 0.68rem;
-  padding: 0.56rem 0.8rem;
+  border-radius: 0.58rem;
+  padding: 0.46rem 0.64rem;
   cursor: pointer;
   font-weight: 600;
   line-height: 1;
-  font-size: 0.8rem;
+  font-size: 0.72rem;
   transition: transform 110ms ease, border-color 110ms ease, background-color 110ms ease;
 }
 
@@ -598,46 +746,93 @@
   opacity: 0.56;
 }
 
-@media (max-width: 1120px) {
-  .snapshotGrid {
-    grid-template-columns: 1fr;
+@media (max-width: 1360px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1.5fr) minmax(320px, 1fr);
   }
 
-  .projectionControls {
+  .controlCluster {
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    display: grid;
   }
 
-  .projectionControls h3,
-  .projectionControls p:first-of-type {
-    grid-column: 1 / -1;
-  }
-
-  .chartCard {
-    grid-column: span 12;
+  .weightClassGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
-@media (max-width: 960px) {
-  .commandHeader {
-    flex-direction: column;
-    align-items: flex-start;
+@media (max-width: 1180px) {
+  .coreChartsGrid {
+    grid-template-columns: 1fr;
   }
 
-  .statusPills {
+  .rateOverrides {
+    grid-template-columns: 1fr;
+  }
+
+  .totalsGrid,
+  .coefficientRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 1080px) {
+  .shell {
+    gap: 0.5rem;
+  }
+
+  .commandHeader {
+    flex-direction: column;
+  }
+
+  .headerMeta {
+    justify-items: start;
+    width: 100%;
+  }
+
+  .actionsRow {
     justify-content: flex-start;
   }
 
-  .controlGrid {
-    grid-template-columns: 1fr;
+  .mobilePaneNav {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.34rem;
   }
 
-  .totalsGrid {
-    grid-template-columns: 1fr;
+  .workspace {
+    display: block;
+    min-height: 0;
   }
 
-  .coefficientRow {
+  .pane {
+    height: 100%;
+  }
+
+  .pane[hidden] {
+    display: none;
+  }
+
+  .weightClassGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .controlCluster {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .page {
+    padding: 0.44rem;
+  }
+
+  .panel {
+    border-radius: 0.7rem;
+    padding: 0.5rem;
+  }
+
+  .statusValue {
+    max-width: 170px;
   }
 
   .liftGrid {
@@ -652,18 +847,12 @@
     border-top: 1px solid var(--border-default);
     background: color-mix(in srgb, var(--surface-3) 82%, black 18%);
   }
-}
 
-@media (max-width: 680px) {
-  .page {
-    padding: 0.74rem;
-  }
-
-  .projectionControls {
+  .weightClassGrid {
     grid-template-columns: 1fr;
   }
 
-  .tableContainer {
-    max-height: 62vh;
+  .mobilePaneNav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

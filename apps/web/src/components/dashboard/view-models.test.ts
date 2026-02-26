@@ -161,6 +161,21 @@ describe('buildWeekDaySections', () => {
     expect(sections[0].days[0].rows[0].rowIndex).toBe(10);
     expect(sections[1].weekIndex).toBe(2);
   });
+
+  it('keeps unassigned week/day rows stable and grouped', () => {
+    const rows = [
+      makeRow({ rowIndex: 40, weekIndex: null, dayIndex: null, weekLabel: '', dayLabel: '', exercise: 'Cable Row' }),
+      makeRow({ rowIndex: 41, weekIndex: null, dayIndex: null, weekLabel: '', dayLabel: '', exercise: 'DB Press' }),
+      makeRow({ rowIndex: 10, weekIndex: 1, dayIndex: 1, exercise: 'Squat' }),
+    ];
+
+    const sections = buildWeekDaySections(rows);
+
+    expect(sections).toHaveLength(2);
+    expect(sections[1].label).toBe('Unassigned Week');
+    expect(sections[1].days[0].label).toBe('Unassigned Day');
+    expect(sections[1].days[0].rows.map((row) => row.exercise)).toEqual(['Cable Row', 'DB Press']);
+  });
 });
 
 describe('inferCurrentPosition', () => {
@@ -304,9 +319,9 @@ describe('buildGrowthRates', () => {
 });
 
 describe('buildMeetProjection', () => {
-  it('projects totals toward meet date using blended rates', () => {
+  it('uses manual override rates for the log-decay start point', () => {
     const today = new Date();
-    const future = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 15);
+    const future = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 56);
     const meetDate = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(
       future.getDate()
     ).padStart(2, '0')}`;
@@ -354,11 +369,97 @@ describe('buildMeetProjection', () => {
         source: 'manual',
         completionPct: null
       },
-      growthRates
+      growthRates,
+      modelSettings: {
+        sex: 'male',
+        bodyweightKg: 77,
+        completedMeets: 0,
+        selectedWeightClasses: ['74', '83'],
+        manualRateOverrides: {
+          squat: 4,
+          bench: 3,
+          deadlift: 5
+        }
+      }
     });
 
     expect(projection.current.total).toBe(330);
     expect(projection.weeksRemaining).toBeGreaterThan(0);
-    expect(projection.projected.total).toBe(330 + 6 * projection.weeksRemaining);
+    expect(projection.rates.squat.usedStartRate).toBe(4);
+    expect(projection.rates.bench.usedStartRate).toBe(3);
+    expect(projection.rates.deadlift.usedStartRate).toBe(5);
+    expect(projection.rates.squat.overrideApplied).toBe(true);
+  });
+
+  it('produces a lower projection than naive linear extrapolation when target rates are lower', () => {
+    const today = new Date();
+    const future = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 56);
+    const meetDate = `${future.getFullYear()}-${String(future.getMonth() + 1).padStart(2, '0')}-${String(
+      future.getDate()
+    ).padStart(2, '0')}`;
+
+    const rows = [
+      makeRow({ weekIndex: 1, dayIndex: 1, exercise: 'Squat', actualLoadKg: 100 }),
+      makeRow({ weekIndex: 1, dayIndex: 1, exercise: 'Bench Press', actualLoadKg: 80 }),
+      makeRow({ weekIndex: 1, dayIndex: 1, exercise: 'Deadlift', actualLoadKg: 150 })
+    ];
+
+    const growthRates = makeGrowthRates({
+      squat: {
+        lift: 'squat',
+        label: 'Squat',
+        current: 100,
+        overallRate: 2,
+        recentRate: 2,
+        blendedRate: 2
+      },
+      bench: {
+        lift: 'bench',
+        label: 'Bench',
+        current: 80,
+        overallRate: 1,
+        recentRate: 1,
+        blendedRate: 1
+      },
+      deadlift: {
+        lift: 'deadlift',
+        label: 'Deadlift',
+        current: 150,
+        overallRate: 3,
+        recentRate: 3,
+        blendedRate: 3
+      }
+    });
+
+    const projection = buildMeetProjection({
+      rows,
+      timeline: [],
+      meetDate,
+      currentPosition: {
+        weekIndex: 1,
+        dayIndex: 1,
+        source: 'manual',
+        completionPct: null
+      },
+      growthRates,
+      modelSettings: {
+        sex: 'male',
+        bodyweightKg: 77,
+        completedMeets: 0,
+        selectedWeightClasses: ['74', '83'],
+        manualRateOverrides: {
+          squat: 10,
+          bench: 10,
+          deadlift: 10
+        }
+      }
+    });
+
+    const linearProjection = projection.current.total + 30 * projection.weeksRemaining;
+
+    expect(projection.projected.total).toBeLessThan(linearProjection);
+    expect(projection.model.transitionLabel).toBe('1->2');
+    expect(projection.model.selectedWeightClasses).toEqual(['74', '83']);
+    expect(projection.rates.squat.targetRate).toBeGreaterThanOrEqual(0);
   });
 });
